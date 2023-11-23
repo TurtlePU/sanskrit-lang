@@ -1,2 +1,2 @@
-# scicomp-lang
+# sanskrit-lang
 Language for verified scientific computing
