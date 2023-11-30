@@ -1,12 +1,6 @@
 package ru.sanskrit.common
 
-sealed trait Expr
-
-case class Var(name: String)
-
-enum Val extends Expr:
-  case Var(x: Var)
-  case Abs(x: Var, t: Expr)
+case class Name(name: String)
 
 enum Rhs:
   case Val(v: Val)
@@ -14,4 +8,9 @@ enum Rhs:
   case Sum(a: Val, b: Val)
   case Mul(a: Val, b: Val)
 
-case class Let(x: Var, t: Type, v: Rhs, b: Expr) extends Expr
+enum Expr:
+  case Let(x: Name, t: Type, v: Rhs, b: Expr)
+
+enum Val extends Expr:
+  case Var(x: Name)
+  case Abs(x: Name, t: Expr)
