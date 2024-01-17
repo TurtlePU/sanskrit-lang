@@ -11,8 +11,8 @@ object unsugar:
     )
 
   def unsugarExpr(e: FExpr): Rhs = e match {
-    case FExpr.Lit(x)    => Rhs.Val(Expr.Val.Lit(x))
-    case FExpr.Var(name) => Rhs.Val(Expr.Val.Var(Name(name)))
-    case FExpr.App(_, _) => ???
-    case FExpr.Lam(_, _) => ???
+    case FExpr.Lit(x)               => Rhs.Val(Expr.Val.Lit(x))
+    case FExpr.Var(name)            => Rhs.Val(Expr.Val.Var(Name(name)))
+    case FExpr.App(f, a)            => Rhs.App(unsugarExpr(f), unsugarExpr(a))
+    case FExpr.Lam(FExpr.Var(x), a) => Rhs.Abs(Name(x), unsugarExpr(a))
   }
