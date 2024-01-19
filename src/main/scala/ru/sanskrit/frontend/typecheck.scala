@@ -9,7 +9,7 @@ object typecheck:
     case Expr.Var(name) => ctx.get(name)
     case Expr.App(f, x) => inferType(f, ctx).flatMap {
       case Type.Func(a, b) => checkType(x, a, ctx).map(_ => b)
-      case _                     => None
+      case _               => None
     }
     case Expr.Lam(_, _) => None
   }
