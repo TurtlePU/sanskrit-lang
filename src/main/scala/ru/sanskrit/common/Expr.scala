@@ -8,7 +8,7 @@ object Rhs:
   case class App(f: Expr.Val, x: Expr.Val) extends Rhs
   case class Sum(a: Expr.Val, b: Expr.Val) extends Rhs
   case class Mul(a: Expr.Val, b: Expr.Val) extends Rhs
-  case class Abs(x: Name, t: Expr.Val) extends Rhs
+  case class Abs(x: Name, t: Expr) extends Rhs
 
 sealed trait Expr
 object Expr:

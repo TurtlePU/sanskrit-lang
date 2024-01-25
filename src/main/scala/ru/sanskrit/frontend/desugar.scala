@@ -40,10 +40,10 @@ object desugar:
       }
     case FExpr.Lam(FExpr.Var(x), a) =>
       for {
-        (r, lets) <- desugarExpr(a)
-        t         <- typecheck.inferType(a, Map.empty)
+        (aVal, aLets) <- desugarExpr(a)
+        aType         <- typecheck.inferType(a, Map.empty)
       } yield {
-        val aName = s"a$$${UUID.randomUUID()}"
-        (Rhs.Abs(Name(x), Expr.Val.Var(Name(aName))), lets :+ (Name(aName), t, r))
+        val fName = s"f$$${UUID.randomUUID()}"
+        (Rhs.Abs(Name(x), Expr.Let(Name(fName), aType, aVal, Expr.Val.Var(Name(fName)))), aLets)
       }
   }
