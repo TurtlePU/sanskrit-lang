@@ -6,7 +6,7 @@ import ru.sanskrit.frontend.syntax.Expr
 
 class ParserSpec extends AnyFlatSpec with Matchers:
   "Expr" should "parse variable names" in {
-    parser.exprParser.parse("aboba") shouldBe Right(("", Expr.Var("aboba")))
+    parser.exprParser.parse("aboba") shouldBe Right(("", Expr.Var("aboba", None)))
   }
 
   it should "parse int literals" in {
@@ -14,10 +14,16 @@ class ParserSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "parse application" in {
-    parser.exprParser.parse("f x") shouldBe Right(("", Expr.App(Expr.Var("f"), Expr.Var("x"))))
+    parser.exprParser.parse("f x") shouldBe Right(("", Expr.App(Expr.Var("f", None), Expr.Var("x", None), None)))
   }
 
   it should "parse carried application" in {
     parser.exprParser.parse("f x y z") shouldBe
-      Right(("", Expr.App(Expr.App(Expr.App(Expr.Var("f"), Expr.Var("x")), Expr.Var("y")), Expr.Var("z"))))
+      Right(("",
+        Expr.App(
+          Expr.App(Expr.App(Expr.Var("f", None), Expr.Var("x", None), None), Expr.Var("y", None), None),
+          Expr.Var("z", None),
+          None
+        )
+      ))
   }

@@ -12,16 +12,16 @@ class DesugarSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "desugar variable name" in {
-    desugar.desugarExpr(FExpr.Var("test")) shouldBe Some(Rhs.Val(Expr.Val.Var(Name("test"))), List.empty)
+    desugar.desugarExpr(FExpr.Var("test", None)) shouldBe Some(Rhs.Val(Expr.Val.Var(Name("test"))), List.empty)
   }
 
   it should "desugar application" in {
-    desugar.desugarExpr(FExpr.App(FExpr.Var("f"), FExpr.Var("x"))) shouldBe
+    desugar.desugarExpr(FExpr.App(FExpr.Var("f", None), FExpr.Var("x", None), None)) shouldBe
       Some(Rhs.App(Expr.Val.Var(Name("f")), Expr.Val.Var(Name("x"))), List.empty)
   }
 
   it should "desugar lambda" in {
-    desugar.desugarExpr(FExpr.Lam(FExpr.Var("x"), FExpr.Lit(42))) shouldBe
+    desugar.desugarExpr(FExpr.Lam(FExpr.Var("x", None), FExpr.Lit(42), None)) shouldBe
       Some(Rhs.Abs(Name("x"), Expr.Val.Lit(42)), List())
   }
 
