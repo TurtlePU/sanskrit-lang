@@ -21,10 +21,10 @@ object desugar:
         )
     } yield res
 
-  def desugarExpr(e: FExpr): Option[(Rhs, List[(Name, Type, Rhs)])] = e match {
-    case FExpr.Lit(x)               => Some((Rhs.Val(Expr.Val.Lit(x)), List.empty))
-    case FExpr.Var(name)            => Some((Rhs.Val(Expr.Val.Var(Name(name))), List.empty))
-    case FExpr.App(f, a)            =>
+  def desugarExpr(e: FExpr[Option]): Option[(Rhs, List[(Name, Type, Rhs)])] = e match {
+    case FExpr.Lit(x)       => Some((Rhs.Val(Expr.Val.Lit(x)), List.empty))
+    case FExpr.Var(name, _) => Some((Rhs.Val(Expr.Val.Var(Name(name))), List.empty))
+    case FExpr.App(f, a, _) =>
       for {
         (fVal, fLets) <- desugarExpr(f)
         (aVal, aLets) <- desugarExpr(a)
@@ -38,7 +38,7 @@ object desugar:
           fLets ++ aLets :+ (Name(fName), fType, fVal) :+ (Name(aName), aType, aVal)
         )
       }
-    case FExpr.Lam(FExpr.Var(x), a) =>
+    case FExpr.Lam(FExpr.Var(x, _), a, _) =>
       for {
         (aVal, aLets) <- desugarExpr(a)
         aType         <- typecheck.inferType(a, Map.empty)

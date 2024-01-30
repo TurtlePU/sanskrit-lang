@@ -5,10 +5,12 @@ import cats.parse.Rfc5234.{sp, alpha, digit}
 import ru.sanskrit.frontend.syntax.Expr
 
 object parser:
-  val exprParser = Parser.recursive[Expr] { parser =>
-    val literalParser = digit.rep.map(_.foldLeft(0)((acc, a) => 10 * acc + (a - '0'))).map(Expr.Lit.apply)
+  val exprParser = Parser.recursive[Expr[Option]] { parser =>
+    val literalParser: Parser[Expr.Lit[Option]] =
+      digit.rep.map(_.foldLeft(0)((acc, a) => 10 * acc + (a - '0'))).map(Expr.Lit.apply)
 
-    val varParser: Parser[Expr.Var] = alpha.rep.map(_.toList.mkString).map(Expr.Var.apply)
+    val varParser: Parser[Expr.Var[Option]] =
+      alpha.rep.map(_.toList.mkString).map(x => Expr.Var(x, None))
 
     val bracketParser =
       for {
@@ -24,13 +26,13 @@ object parser:
         arg <- varParser <* sp.rep0
         _ <- Parser.string("=>") <* sp.rep0
         expr <- parser
-      } yield Expr.Lam(arg, expr)
+      } yield Expr.Lam(arg, expr, None)
 
     val simpleOrApplyParser =
       for {
         f <- simpleTermParser
         x <- (sp.rep *> simpleTermParser).rep0
-      } yield x.foldLeft(f: Expr)((acc, x) => Expr.App(acc, x))
+      } yield x.foldLeft(f: Expr[Option])((acc, x) => Expr.App(acc, x, None))
 
     lambdaParser | simpleOrApplyParser | literalParser
   }
