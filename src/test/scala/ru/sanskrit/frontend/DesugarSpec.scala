@@ -12,22 +12,22 @@ class DesugarSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "desugar variable name" in {
-    desugar.desugarExpr(FExpr.Var("test", None)) shouldBe Some(Rhs.Val(Expr.Val.Var(Name("test"))), List.empty)
+    desugar.desugarExpr(FExpr.Var("test", Type.Int)) shouldBe Some(Rhs.Val(Expr.Val.Var(Name("test"))), List.empty)
   }
 
   it should "desugar application" in {
-    desugar.desugarExpr(FExpr.App(FExpr.Var("f", None), FExpr.Var("x", None), None)) shouldBe
+    desugar.desugarExpr(FExpr.App(FExpr.Var("f", Type.Func(Type.Int, Type.Int)), FExpr.Var("x", Type.Int), Type.Int)) shouldBe
       Some(Rhs.App(Expr.Val.Var(Name("f")), Expr.Val.Var(Name("x"))), List.empty)
   }
 
   it should "desugar lambda" in {
-    desugar.desugarExpr(FExpr.Lam(FExpr.Var("x", None), FExpr.Lit(42), None)) shouldBe
+    desugar.desugarExpr(FExpr.Lam(FExpr.Var("x", Type.Int), FExpr.Lit(42), Type.Func(Type.Int, Type.Int))) shouldBe
       Some(Rhs.Abs(Name("x"), Expr.Val.Lit(42)), List())
   }
 
   "desugarProgram" should "desugar simple program" in {
     desugar.desugarProgram(List(Func("main", Type.Int, List.empty, FExpr.Lit(42)))) shouldBe
-      Some(Expr.Let(Name("main"), Type.Int, Rhs.Val(Expr.Val.Lit(42)), Expr.Val.Var(Name("main"))), List.empty)
+      Some(Expr.Let(Name("main"), Type.Int, Rhs.Val(Expr.Val.Lit(42)), Expr.Val.Var(Name("main"))))
   }
 
   it should "fail on program without main" in {
