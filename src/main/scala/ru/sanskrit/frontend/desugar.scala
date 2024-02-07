@@ -1,5 +1,6 @@
 package ru.sanskrit.frontend
 
+import cats.Id
 import ru.sanskrit.common.{Expr, Name, Rhs, Type}
 import ru.sanskrit.frontend.syntax.{Expr => FExpr}
 import ru.sanskrit.frontend.typecheck.Func
@@ -21,29 +22,26 @@ object desugar:
         )
     } yield res
 
-  def desugarExpr(e: FExpr[Option]): Option[(Rhs, List[(Name, Type, Rhs)])] = e match {
+  def desugarExpr(e: FExpr[Id]): Option[(Rhs, List[(Name, Type, Rhs)])] = e match {
     case FExpr.Lit(x)       => Some((Rhs.Val(Expr.Val.Lit(x)), List.empty))
     case FExpr.Var(name, _) => Some((Rhs.Val(Expr.Val.Var(Name(name))), List.empty))
     case FExpr.App(f, a, _) =>
       for {
         (fVal, fLets) <- desugarExpr(f)
         (aVal, aLets) <- desugarExpr(a)
-        fType         <- typecheck.inferType(f, Map.empty)
-        aType         <- typecheck.inferType(a, Map.empty)
       } yield {
         val fName = s"f$$${UUID.randomUUID()}"
         val aName = s"a$$${UUID.randomUUID()}"
         (
           Rhs.App(Expr.Val.Var(Name(fName)), Expr.Val.Var(Name(aName))),
-          fLets ++ aLets :+ (Name(fName), fType, fVal) :+ (Name(aName), aType, aVal)
+          fLets ++ aLets :+ (Name(fName), f.getType, fVal) :+ (Name(aName), a.getType, aVal)
         )
       }
     case FExpr.Lam(FExpr.Var(x, _), a, _) =>
       for {
         (aVal, aLets) <- desugarExpr(a)
-        aType         <- typecheck.inferType(a, Map.empty)
       } yield {
         val fName = s"f$$${UUID.randomUUID()}"
-        (Rhs.Abs(Name(x), Expr.Let(Name(fName), aType, aVal, Expr.Val.Var(Name(fName)))), aLets)
+        (Rhs.Abs(Name(x), Expr.Let(Name(fName), a.getType, aVal, Expr.Val.Var(Name(fName)))), aLets)
       }
   }
