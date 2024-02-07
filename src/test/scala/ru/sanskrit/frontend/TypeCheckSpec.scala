@@ -8,15 +8,15 @@ import ru.sanskrit.frontend.syntax.Expr
 
 class TypeCheckSpec extends AnyFlatSpec with Matchers:
   "checkType" should "check literals to int" in {
-    typecheck.checkType(Expr.Lit(42), Type.Int, Map.empty) shouldBe Some(Expr.Lit(42))
+    typecheck.inferType(Expr.Lit(42), Map.empty) shouldBe Some(Expr.Lit(42))
   }
 
   it should "check variable in context" in {
-    typecheck.checkType(Expr.Var("x", None), Type.Int, Map("x" -> Type.Int)) shouldBe Some(Expr.Var[Id]("x", Type.Int))
+    typecheck.inferType(Expr.Var("x", Some(Type.Int)), Map("x" -> Type.Int)) shouldBe Some(Expr.Var[Id]("x", Type.Int))
   }
 
   it should "check variable not in context" in {
-    typecheck.checkType(Expr.Var("x", None), Type.Int, Map.empty) shouldBe Some(Expr.Var[Id]("x", Type.Int))
+    typecheck.inferType(Expr.Var("x", Some(Type.Int)), Map.empty) shouldBe Some(Expr.Var[Id]("x", Type.Int))
   }
 
   "inferType" should "infer variable type from context" in {
