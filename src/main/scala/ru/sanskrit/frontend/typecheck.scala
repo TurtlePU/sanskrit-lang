@@ -2,7 +2,7 @@ package ru.sanskrit.frontend
 
 import cats.Id
 import cats.syntax.traverse.*
-import ru.sanskrit.frontend.syntax.{Expr, Func => FrontendFunc}
+import ru.sanskrit.frontend.syntax.{Expr, Func}
 import ru.sanskrit.common.Type
 
 object typecheck:
@@ -30,13 +30,13 @@ object typecheck:
     case _ => None
   }
 
-  def inferFuncType(f: FrontendFunc): Option[Func] = {
+  def inferFuncType(f: Func[Option]): Option[Func[Id]] = {
     val ctx = f.args.flatMap (v => v.`type`.map (t => v.name -> t) ).toMap
     for {
       updatedBody <- f.tp.fold(Some(f.body))(t => updateType(f.body, t))
       typedBody   <- inferType (updatedBody, ctx)
       typedArgs   <- f.args.traverse(arg => getType(typedBody, arg.name).flatMap(t => updateVarToId(arg, t)))
-    } yield Func(f.name, typedBody.getType, typedArgs.toList, typedBody)
+    } yield Func(f.name, typedBody.getType, typedBody, typedArgs: _*)
   }
 
   private def updateVarToId(e: Expr.Var[Option], `type`: Type): Option[Expr.Var[Id]] = e match {
@@ -50,5 +50,3 @@ object typecheck:
     case Expr.Lam(x, b, _) if x.name != name => getType(b, name)
     case _                                   => None
   }
-
-  case class Func(name: String, tp: Type, args: List[Expr.Var[Id]], body: Expr[Id])

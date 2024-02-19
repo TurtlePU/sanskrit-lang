@@ -2,13 +2,12 @@ package ru.sanskrit.frontend
 
 import cats.Id
 import ru.sanskrit.common.{Expr, Name, Rhs, Type}
-import ru.sanskrit.frontend.syntax.{Expr => FExpr}
-import ru.sanskrit.frontend.typecheck.Func
+import ru.sanskrit.frontend.syntax.{Expr => FExpr, Func}
 
 import java.util.UUID
 
 object desugar:
-  def desugarProgram(f: List[Func]): Option[Expr] =
+  def desugarProgram(f: List[Func[Id]]): Option[Expr] =
     for {
       _   <- Option.when(f.exists(_.name == "main"))(())
       res <-

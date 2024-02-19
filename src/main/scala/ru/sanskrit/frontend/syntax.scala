@@ -18,4 +18,4 @@ object syntax:
       case Lam(_, _, t) => t
     }
 
-  case class Func(name: String, tp: Option[Type], body: Expr[Option], args: Expr.Var[Option]*)
+  case class Func[F[_]](name: String, tp: F[Type], body: Expr[F], args: Expr.Var[F]*)
