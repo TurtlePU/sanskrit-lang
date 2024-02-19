@@ -4,7 +4,7 @@ import cats.syntax.traverse.*
 
 object Main {
   private def readFile(fileName: String): String = {
-    val source = scala.io.Source.fromFile("file.txt")
+    val source = scala.io.Source.fromFile(fileName)
     val res    = source.getLines.mkString("\n")
     source.close()
     res
