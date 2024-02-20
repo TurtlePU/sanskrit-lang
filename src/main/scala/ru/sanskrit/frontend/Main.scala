@@ -12,10 +12,10 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val files = args.map(readFile).toList
-    for {
-      parsed      <- files.traverse(file => parser.funcParser.rep0.parse(file).toOption.map(_._2))
-      typechecked <- parsed.traverse(file => file.traverse(func => typecheck.inferFuncType(func)))
-      result      <- typechecked.traverse(file => desugar.desugarProgram(file))
-    } yield println(result)
+    (for {
+      parsed      <- files.traverse(file => parser.funcParser.rep0.parse(file).toOption.map(_._2)).toRight("Parsing error")
+      typechecked <- parsed.traverse(file => file.traverse(func => typecheck.inferFuncType(func))).toRight("Typechecking error")
+      _           <- typechecked.traverse(file => desugar.desugarProgram(file)).toRight("Desugaring error")
+    } yield ()).fold(println, _ => println("Compilation succeed"))
   }
 }
