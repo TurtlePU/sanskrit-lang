@@ -1,7 +1,8 @@
 package ru.sanskrit.frontend
 
 import cats.Id
-import ru.sanskrit.frontend.syntax.Expr
+import cats.syntax.traverse.*
+import ru.sanskrit.frontend.syntax.{Expr, Func}
 import ru.sanskrit.common.Type
 
 object typecheck:
@@ -21,7 +22,7 @@ object typecheck:
     }
   }
 
-  def updateType(e: Expr[Option], `type`: Type): Option[Expr[Option]] = e match {
+  private def updateType(e: Expr[Option], `type`: Type): Option[Expr[Option]] = e match {
     case Expr.Lit(l) if `type` == Type.Int          => Some(Expr.Lit(l))
     case Expr.Var(name, t) if t.forall(_ == `type`) => Some(Expr.Var(name, Some(`type`)))
     case Expr.App(f, x, t) if t.forall(_ == `type`) => Some(Expr.App(f, x, Some(`type`)))
@@ -29,4 +30,23 @@ object typecheck:
     case _ => None
   }
 
-  case class Func(name: String, tp: Type, args: List[Expr.Var[Id]], body: Expr[Id])
+  def inferFuncType(f: Func[Option]): Option[Func[Id]] = {
+    val ctx = f.args.flatMap (v => v.`type`.map (t => v.name -> t) ).toMap
+    for {
+      updatedBody <- f.tp.fold(Some(f.body))(t => updateType(f.body, t))
+      typedBody   <- inferType (updatedBody, ctx)
+      typedArgs   <- f.args.traverse(arg => getType(typedBody, arg.name).flatMap(t => updateVarToId(arg, t)))
+    } yield Func(f.name, typedBody.getType, typedBody, typedArgs: _*)
+  }
+
+  private def updateVarToId(e: Expr.Var[Option], `type`: Type): Option[Expr.Var[Id]] = e match {
+    case Expr.Var(name, t) if t.forall(_ == `type`) => Some(Expr.Var(name, `type`))
+    case _ => None
+  }
+
+  private def getType(e: Expr[Id], name: String): Option[Type] = e match {
+    case Expr.Var(n, t) if n == name         => Some(t)
+    case Expr.App(f, x, _)                   => getType(f, name).orElse(getType(x, name))
+    case Expr.Lam(x, b, _) if x.name != name => getType(b, name)
+    case _                                   => None
+  }

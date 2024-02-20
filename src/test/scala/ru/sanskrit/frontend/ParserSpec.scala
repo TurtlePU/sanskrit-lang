@@ -2,7 +2,8 @@ package ru.sanskrit.frontend
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import ru.sanskrit.frontend.syntax.Expr
+import ru.sanskrit.common.Type
+import ru.sanskrit.frontend.syntax.{Expr, Func}
 
 class ParserSpec extends AnyFlatSpec with Matchers:
   "Expr" should "parse variable names" in {
@@ -26,4 +27,19 @@ class ParserSpec extends AnyFlatSpec with Matchers:
           None
         )
       ))
+  }
+
+  "Func" should "parse constant let" in {
+    parser.funcParser.parse("a: Int := 42") shouldBe
+      Right(("", Func("a", Some(Type.Int), Expr.Lit(42))))
+  }
+
+  it should "parse id function" in {
+    parser.funcParser.parse("id (x: Int): Int := x") shouldBe
+      Right(("", Func("id", Some(Type.Int), Expr.Var("x", None), Expr.Var("x", Some(Type.Int)))))
+  }
+
+  it should "parse short id function" in {
+    parser.funcParser.parse("id (x: Int) := x") shouldBe
+      Right(("", Func("id", None, Expr.Var("x", None), Expr.Var("x", Some(Type.Int)))))
   }

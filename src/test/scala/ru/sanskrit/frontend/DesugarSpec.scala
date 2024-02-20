@@ -3,8 +3,7 @@ package ru.sanskrit.frontend
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import ru.sanskrit.common.{Expr, Name, Rhs, Type}
-import ru.sanskrit.frontend.syntax.{Expr => FExpr}
-import ru.sanskrit.frontend.typecheck.Func
+import ru.sanskrit.frontend.syntax.{Expr => FExpr, Func}
 
 class DesugarSpec extends AnyFlatSpec with Matchers:
   "desugarExpr" should "desugar literal" in {
@@ -26,7 +25,7 @@ class DesugarSpec extends AnyFlatSpec with Matchers:
   }
 
   "desugarProgram" should "desugar simple program" in {
-    desugar.desugarProgram(List(Func("main", Type.Int, List.empty, FExpr.Lit(42)))) shouldBe
+    desugar.desugarProgram(List(Func("main", Type.Int, FExpr.Lit(42)))) shouldBe
       Some(Expr.Let(Name("main"), Type.Int, Rhs.Val(Expr.Val.Lit(42)), Expr.Val.Var(Name("main"))))
   }
 
