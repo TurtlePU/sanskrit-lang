@@ -42,18 +42,23 @@ object parser:
 
     val simpleOrApplyParser =
       for {
-        f <- simpleTermParser
-        x <- (sp.rep *> simpleTermParser).rep0
+        f <- simpleTermParser <* sp.rep0
+        x <- (simpleTermParser <* sp.rep0).rep0
       } yield x.foldLeft(f: Expr[Option])((acc, x) => Expr.App(acc, x, None))
 
-    val infixOpParser =
+    val mulParser =
       for {
-        x <- simpleTermParser <* sp.rep
-        f <- (Parser.string("+").as("+") | Parser.string("*").as("*")) <* sp.rep
-        y <- parser
-      } yield Expr.InfixOp(Expr.Var(f, None), x, y, None)
+        x  <- simpleOrApplyParser <* sp.rep0
+        ys <- (Parser.string("*") *> sp.rep0 *> simpleOrApplyParser).rep0
+      } yield ys.foldLeft(x)((acc, x) => Expr.InfixOp(Expr.Var("*", None), acc, x, None))
 
-    lambdaParser | simpleOrApplyParser.backtrack | infixOpParser | literalParser
+    val sumParser =
+      for {
+        x  <- mulParser <* sp.rep0
+        ys <- (Parser.string("+") *> sp.rep0 *> mulParser).rep0
+      } yield ys.foldLeft(x)((acc, x) => Expr.InfixOp(Expr.Var("+", None), acc, x, None))
+
+    lambdaParser | sumParser | literalParser
   }
 
   val funcParser =

@@ -39,6 +39,31 @@ class ParserSpec extends AnyFlatSpec with Matchers:
       Right(("", Expr.InfixOp(Expr.Var("*", None), Expr.Var("a", None), Expr.Var("b", None), None)))
   }
 
+  it should "parse complex expr" in {
+    parser.exprParser.parse("a + b * (c + d) + e") shouldBe
+      Right(("", Expr.InfixOp(
+        Expr.Var("+", None),
+        Expr.InfixOp(
+          Expr.Var("+", None),
+          Expr.Var("a", None),
+          Expr.InfixOp(
+            Expr.Var("*", None),
+            Expr.Var("b", None),
+            Expr.InfixOp(
+              Expr.Var("+", None),
+              Expr.Var("c", None),
+              Expr.Var("d", None),
+              None
+            ),
+            None
+          ),
+          None
+        ),
+        Expr.Var("e", None),
+        None
+      )))
+  }
+
   "Func" should "parse constant let" in {
     parser.funcParser.parse("a: Int := 42") shouldBe
       Right(("", Func("a", Some(Type.Int), Expr.Lit(42))))
