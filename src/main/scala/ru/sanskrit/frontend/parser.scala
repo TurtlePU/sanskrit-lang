@@ -46,7 +46,14 @@ object parser:
         x <- (sp.rep *> simpleTermParser).rep0
       } yield x.foldLeft(f: Expr[Option])((acc, x) => Expr.App(acc, x, None))
 
-    lambdaParser | simpleOrApplyParser | literalParser
+    val infixOpParser =
+      for {
+        x <- simpleTermParser <* sp.rep
+        f <- (Parser.string("+").as("+") | Parser.string("*").as("*")) <* sp.rep
+        y <- parser
+      } yield Expr.InfixOp(Expr.Var(f, None), x, y, None)
+
+    lambdaParser | simpleOrApplyParser.backtrack | infixOpParser | literalParser
   }
 
   val funcParser =
