@@ -27,6 +27,23 @@ class TypeCheckSpec extends AnyFlatSpec with Matchers:
     typecheck.inferType(Expr.Var("x", None), Map.empty) shouldBe None
   }
 
+  it should "infer int expr type" in {
+    typecheck.inferType(Expr.InfixOp(Expr.Var("+", None), Expr.Lit(42), Expr.Var("x", None), None), Map.empty) shouldBe
+      Some(Expr.InfixOp[Id](
+        Expr.Var("+", Type.Func(Type.Int, Type.Func(Type.Int, Type.Int))),
+        Expr.Lit(42),
+        Expr.Var("x", Type.Int),
+        Type.Int
+      ))
+  }
+
+  it should "fail on non int arguments" in {
+    typecheck.inferType(
+      Expr.InfixOp(Expr.Var("+", None), Expr.Lit(42), Expr.Var("x", Some(Type.Func(Type.Int, Type.Int))), None),
+      Map.empty
+    ) shouldBe None
+  }
+
   "inferFuncType" should "accept a fully annotated function" in {
     typecheck.inferFuncType(Func[Option]("id", Some(Type.Int), Expr.Var("x", None), Expr.Var("x", Some(Type.Int)))) shouldBe
       Some(Func[Id]("id", Type.Int, Expr.Var("x", Type.Int), Expr.Var("x", Type.Int)))

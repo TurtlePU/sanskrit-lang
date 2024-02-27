@@ -20,13 +20,22 @@ object typecheck:
       case Type.Func(tx, tb) => updateType(b, tb).flatMap(b1 => inferType(b1, ctx + (x -> tx)))
       case _                 => None
     }
+    case Expr.InfixOp(Expr.Var(f, _), x, y, t) => f match {
+      case "+" | "*" =>
+        for {
+          x1 <- updateType(x, Type.Int).flatMap(inferType(_, ctx))
+          y1 <- updateType(y, Type.Int).flatMap(inferType(_, ctx))
+        } yield Expr.InfixOp(Expr.Var(f, Type.Func(Type.Int, Type.Func(Type.Int, Type.Int))), x1, y1, Type.Int)
+      case _ => None
+    }
   }
 
   private def updateType(e: Expr[Option], `type`: Type): Option[Expr[Option]] = e match {
-    case Expr.Lit(l) if `type` == Type.Int          => Some(Expr.Lit(l))
-    case Expr.Var(name, t) if t.forall(_ == `type`) => Some(Expr.Var(name, Some(`type`)))
-    case Expr.App(f, x, t) if t.forall(_ == `type`) => Some(Expr.App(f, x, Some(`type`)))
-    case Expr.Lam(x, b, t) if t.forall(_ == `type`) => Some(Expr.Lam(x, b, Some(`type`)))
+    case Expr.Lit(l) if `type` == Type.Int                 => Some(Expr.Lit(l))
+    case Expr.Var(name, t) if t.forall(_ == `type`)        => Some(Expr.Var(name, Some(`type`)))
+    case Expr.App(f, x, t) if t.forall(_ == `type`)        => Some(Expr.App(f, x, Some(`type`)))
+    case Expr.Lam(x, b, t) if t.forall(_ == `type`)        => Some(Expr.Lam(x, b, Some(`type`)))
+    case Expr.InfixOp(f, x, y, t) if t.forall(_ == `type`) => Some(Expr.InfixOp(f, x, y, Some(`type`)))
     case _ => None
   }
 

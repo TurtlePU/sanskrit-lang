@@ -43,4 +43,19 @@ object desugar:
         val fName = s"f$$${UUID.randomUUID()}"
         (Rhs.Abs(Name(x), Expr.Let(Name(fName), a.getType, aVal, Expr.Val.Var(Name(fName)))), aLets)
       }
+    case FExpr.InfixOp(FExpr.Var(f, _), x, y, _) =>
+      for {
+        (xVal, xLets) <- desugarExpr(x)
+        (yVal, yLets) <- desugarExpr(y)
+        xName          = s"x$$${UUID.randomUUID()}"
+        yName          = s"y$$${UUID.randomUUID()}"
+        xVar           = Expr.Val.Var(Name(xName))
+        yVar           = Expr.Val.Var(Name(yName))
+        lets           = xLets ++ yLets :+ (Name(xName), x.getType, xVal) :+ (Name(yName), y.getType, yVal)
+        res           <- f match {
+          case "+" => Some(Rhs.Sum(xVar, yVar))
+          case "*" => Some(Rhs.Mul(xVar, yVar))
+          case _   => None
+        }
+      } yield (res, lets)
   }
