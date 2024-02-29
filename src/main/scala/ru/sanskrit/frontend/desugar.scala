@@ -1,7 +1,7 @@
 package ru.sanskrit.frontend
 
 import cats.Id
-import ru.sanskrit.common.{Expr, Name, Rhs, Type}
+import ru.sanskrit.common.{Abs, App, Expr, Let, Lit, Mul, Name, Sum, Type, Var}
 import ru.sanskrit.frontend.syntax.{Expr => FExpr, Func}
 
 import java.util.UUID
@@ -11,19 +11,19 @@ object desugar:
     for {
       _   <- Option.when(f.exists(_.name == "main"))(())
       res <-
-        f.foldRight[Option[Expr]](Some(Expr.Val.Var(Name("main"))))((f, accF) =>
+        f.foldRight[Option[Expr]](Some(Var(Name("main"))))((f, accF) =>
           for {
             acc         <- accF
             (rhs, lets) <- desugarExpr(f.body)
-          } yield lets.foldRight(Expr.Let(Name(f.name), f.tp, rhs, acc)) { case ((n, t, r), acc) =>
-            Expr.Let(n, t, r, acc)
+          } yield lets.foldRight(Let(Name(f.name), f.tp, rhs, acc)) { case ((n, t, r), acc) =>
+            Let(n, t, r, acc)
           }
         )
     } yield res
 
-  def desugarExpr(e: FExpr[Id]): Option[(Rhs, List[(Name, Type, Rhs)])] = e match {
-    case FExpr.Lit(x)       => Some((Rhs.Val(Expr.Val.Lit(x)), List.empty))
-    case FExpr.Var(name, _) => Some((Rhs.Val(Expr.Val.Var(Name(name))), List.empty))
+  def desugarExpr(e: FExpr[Id]): Option[(Expr, List[(Name, Type, Expr)])] = e match {
+    case FExpr.Lit(x)       => Some((Lit(x), List.empty))
+    case FExpr.Var(name, _) => Some((Var(Name(name)), List.empty))
     case FExpr.App(f, a, _) =>
       for {
         (fVal, fLets) <- desugarExpr(f)
@@ -32,7 +32,7 @@ object desugar:
         val fName = s"f$$${UUID.randomUUID()}"
         val aName = s"a$$${UUID.randomUUID()}"
         (
-          Rhs.App(Expr.Val.Var(Name(fName)), Expr.Val.Var(Name(aName))),
+          App(Var(Name(fName)), Var(Name(aName))),
           fLets ++ aLets :+ (Name(fName), f.getType, fVal) :+ (Name(aName), a.getType, aVal)
         )
       }
@@ -41,7 +41,7 @@ object desugar:
         (aVal, aLets) <- desugarExpr(a)
       } yield {
         val fName = s"f$$${UUID.randomUUID()}"
-        (Rhs.Abs(Name(x), Expr.Let(Name(fName), a.getType, aVal, Expr.Val.Var(Name(fName)))), aLets)
+        (Abs(Name(x), Let(Name(fName), a.getType, aVal, Var(Name(fName)))), aLets)
       }
     case FExpr.InfixOp(FExpr.Var(f, _), x, y, _) =>
       for {
@@ -49,12 +49,12 @@ object desugar:
         (yVal, yLets) <- desugarExpr(y)
         xName          = s"x$$${UUID.randomUUID()}"
         yName          = s"y$$${UUID.randomUUID()}"
-        xVar           = Expr.Val.Var(Name(xName))
-        yVar           = Expr.Val.Var(Name(yName))
+        xVar           = Var(Name(xName))
+        yVar           = Var(Name(yName))
         lets           = xLets ++ yLets :+ (Name(xName), x.getType, xVal) :+ (Name(yName), y.getType, yVal)
         res           <- f match {
-          case "+" => Some(Rhs.Sum(xVar, yVar))
-          case "*" => Some(Rhs.Mul(xVar, yVar))
+          case "+" => Some(Sum(xVar, yVar))
+          case "*" => Some(Mul(xVar, yVar))
           case _   => None
         }
       } yield (res, lets)
