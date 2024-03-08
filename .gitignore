@@ -11,3 +11,12 @@ hs_err_pid*
 target/
 project/target/
 .bsp/
+
+# VS Code trash
+
+.bloop/
+.metals/
+.vscode/
+project/.bloop/
+project/metals.sbt
+project/project/

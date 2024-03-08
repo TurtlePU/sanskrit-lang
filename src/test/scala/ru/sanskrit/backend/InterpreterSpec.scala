@@ -1,74 +1,66 @@
 package ru.sanskrit.backend
 
-import ru.sanskrit.common.{Expr, Name, Rhs, Type}
+import ru.sanskrit.common._
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class InterpreterSpec extends AnyFlatSpec with Matchers:
   "Interpreter" should "interpret literal as itself" in {
-    interpreter.run(Expr.Val.Lit(10)) shouldBe Some(Rhs.Val(Expr.Val.Lit(10)))
+    interpreter.run(Lit(10)) shouldBe Some(Lit(10))
   }
 
   it should "interpret sum" in {
-    val expr = Expr.Let(
+    val expr = Let(
       Name("a"),
       Type.Int,
-      Rhs.Val(Expr.Val.Lit(2)),
-      Expr.Let(
+      Lit(2),
+      Let(
         Name("b"),
         Type.Int,
-        Rhs.Val(Expr.Val.Lit(3)),
-        Expr.Let(
+        Lit(3),
+        Let(
           Name("res"),
           Type.Int,
-          Rhs.Sum(Expr.Val.Var(Name("a")), Expr.Val.Var(Name("b"))),
-          Expr.Val.Var(Name("res"))
+          Sum(Var(Name("a")), Var(Name("b"))),
+          Var(Name("res"))
         )
       )
     )
-    interpreter.run(expr) shouldBe Some(Rhs.Val(Expr.Val.Lit(5)))
+    interpreter.run(expr) shouldBe Some(Lit(5))
   }
 
   it should "interpret mul" in {
-    val expr = Expr.Let(
+    val expr = Let(
       Name("a"),
       Type.Int,
-      Rhs.Val(Expr.Val.Lit(2)),
-      Expr.Let(
+      Lit(2),
+      Let(
         Name("b"),
         Type.Int,
-        Rhs.Val(Expr.Val.Lit(3)),
-        Expr.Let(
+        Lit(3),
+        Let(
           Name("res"),
           Type.Int,
-          Rhs.Mul(Expr.Val.Var(Name("a")), Expr.Val.Var(Name("b"))),
-          Expr.Val.Var(Name("res"))
+          Mul(Var(Name("a")), Var(Name("b"))),
+          Var(Name("res"))
         )
       )
     )
-    interpreter.run(expr) shouldBe Some(Rhs.Val(Expr.Val.Lit(6)))
+    interpreter.run(expr) shouldBe Some(Lit(6))
   }
 
   it should "interpret function" in {
-    val xName: Name = Name("x")
-    val funcName: Name = Name("square")
-    val implName: Name = Name("squareImpl")
-    val expr = Expr.Let(
-      funcName,
+    val expr = Let(
+      Name("square"),
       Type.Func(Type.Int, Type.Int),
-      Rhs.Abs(xName, Expr.Let(
-        implName,
+      Abs(Name("x"), Mul(Var(Name("x")), Var(Name("x")))),
+      Let(
+        Name("y"),
         Type.Int,
-        Rhs.Mul(Expr.Val.Var(xName), Expr.Val.Var(xName)),
-        Expr.Val.Var(implName)
-      )),
-      Expr.Let(
-        Name("res"),
-        Type.Int,
-        Rhs.App(Expr.Val.Var(funcName), Expr.Val.Lit(9)),
-        Expr.Val.Var(Name("res"))
+        Lit(9),
+        App(Var(Name("square")), Var(Name("y")))
       )
     )
-    interpreter.run(expr) shouldBe Some(Rhs.Val(Expr.Val.Lit(81)))
+    interpreter.run(expr) shouldBe Some(Lit(81))
   }
