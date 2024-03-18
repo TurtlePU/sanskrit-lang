@@ -9,7 +9,7 @@ object syntax:
   enum Expr[F[_]]:
     case Lit(x: Int, caret: Caret)
     case Var(name: String, `type`: F[Type], caret: Caret)
-    case App(f: Expr[F], x: Expr[F],`type`: F[Type], caret: Caret)
+    case App(f: Expr[F], x: Expr[F], `type`: F[Type], caret: Caret)
     case Lam(arg: Var[F], expr: Expr[F], `type`: F[Type], caret: Caret)
     case InfixOp(f: Var[F], x: Expr[F], y: Expr[F], `type`: F[Type], caret: Caret)
 
