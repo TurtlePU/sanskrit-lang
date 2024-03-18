@@ -1,0 +1,13 @@
+stages:
+  - build
+  - test
+
+build:
+  stage: build
+  script:
+    - sbt build
+
+test:
+  stage: test
+  script:
+    - sbt test
