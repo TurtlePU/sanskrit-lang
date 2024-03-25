@@ -1,7 +1,7 @@
 package ru.sanskrit.frontend
 
 import cats.syntax.traverse.*
-//import ru.sanskrit.backend.interpreter
+import ru.sanskrit.backend.interpreter
 
 object Main {
   private def readFile(fileName: String): String = {
@@ -18,7 +18,7 @@ object Main {
       typechecked <- parsed.traverse(file => file.traverse(func => typecheck.inferFuncType(func)))
         .left.map(e => s"Typing error: ${e.cause} at ${e.caret.line}:${e.caret.col}")
       desugared <- typechecked.traverse(file => desugar.desugarProgram(file)).toRight("Desugaring error")
-      //interpreted <- desugared.traverse(expr => interpreter.run(expr).toRight("Interpreting error"))
+      interpreted <- desugared.traverse(expr => interpreter.run(expr).toRight("Interpreting error"))
     } yield desugared).fold(println, res => println(res))
   }
 }
