@@ -19,6 +19,6 @@ object Main {
         .left.map(e => s"Typing error: ${e.cause} at ${e.caret.line}:${e.caret.col}")
       desugared <- typechecked.traverse(file => desugar.desugarProgram(file)).toRight("Desugaring error")
       interpreted <- desugared.traverse(expr => interpreter.run(expr).toRight("Interpreting error"))
-    } yield desugared).fold(println, res => println(res))
+    } yield interpreted).fold(println, res => println(res))
   }
 }
