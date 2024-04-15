@@ -2,7 +2,7 @@ package ru.sanskrit.frontend
 
 import cats.Id
 import ru.sanskrit.common.{Abs, App, Expr, Let, Lit, Mul, Name, Sum, Type, Var}
-import ru.sanskrit.frontend.syntax.{Expr => FExpr, Func}
+import ru.sanskrit.frontend.syntax.{Expr as FExpr, Func}
 
 import java.util.UUID
 

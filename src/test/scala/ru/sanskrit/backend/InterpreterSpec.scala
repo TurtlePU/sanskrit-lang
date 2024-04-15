@@ -1,6 +1,6 @@
 package ru.sanskrit.backend
 
-import ru.sanskrit.common._
+import ru.sanskrit.common.*
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
