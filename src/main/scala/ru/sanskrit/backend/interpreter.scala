@@ -1,6 +1,6 @@
 package ru.sanskrit.backend
 
-import ru.sanskrit.common._
+import ru.sanskrit.common.*
 import scala.collection.mutable.Map
 
 object interpreter:
