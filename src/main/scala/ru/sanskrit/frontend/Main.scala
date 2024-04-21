@@ -8,6 +8,7 @@ object Main {
     val source = scala.io.Source.fromFile(fileName)
     val res    = source.getLines.mkString("\n")
     source.close()
+    println(parser.funcParser.rep0.parse(res))
     res
   }
 
@@ -15,10 +16,16 @@ object Main {
     val files = args.map(readFile).toList
     (for {
       parsed      <- files.traverse(file => parser.funcParser.rep0.parse(file).toOption.map(_._2)).toRight("Parsing error")
+      _ = println(parsed)
       typechecked <- parsed.traverse(file => file.traverse(func => typecheck.inferFuncType(func)))
         .left.map(e => s"Typing error: ${e.cause} at [${e.position.begin.line}:${e.position.begin.col}, ${e.position.end.line}:${e.position.end.col}]")
+      _ = println(typechecked)
       desugared <- typechecked.traverse(file => desugar.desugarProgram(file)).toRight("Desugaring error")
       interpreted <- desugared.traverse(expr => interpreter.run(expr).toRight("Interpreting error"))
     } yield interpreted).fold(println, res => println(res))
   }
 }
+
+
+
+
