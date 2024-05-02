@@ -76,21 +76,29 @@ class TypeCheckSpec extends AnyFlatSpec with Matchers:
 
   "inferFuncType" should "accept a fully annotated function" in {
     typecheck.inferFuncType(
-      Func[Option]("id", Some(Type.Int), Expr.Var("x", None, testPosition), Expr.Var("x", Some(Type.Int), testPosition))
+      Func[Option](
+        "id",
+        Some(Type.Int),
+        Expr.Var("x", None, testPosition),
+        Expr.Var("x", Some(Type.Int), testPosition)
+      ),
+      Map.empty
     ) shouldBe
       Right(Func[Id]("id", Type.Int, Expr.Var("x", Type.Int, testPosition), Expr.Var("x", Type.Int, testPosition)))
   }
 
   it should "infer a function type based on the argument types" in {
     typecheck.inferFuncType(
-      Func[Option]("id", None, Expr.Var("x", None, testPosition), Expr.Var("x", Some(Type.Int), testPosition))
+      Func[Option]("id", None, Expr.Var("x", None, testPosition), Expr.Var("x", Some(Type.Int), testPosition)),
+      Map.empty
     ) shouldBe
       Right(Func[Id]("id", Type.Int, Expr.Var("x", Type.Int, testPosition), Expr.Var("x", Type.Int, testPosition)))
   }
 
   it should "infer a argument type based on the function types" in {
     typecheck.inferFuncType(
-      Func[Option]("id", Some(Type.Int), Expr.Var("x", None, testPosition), Expr.Var("x", None, testPosition))
+      Func[Option]("id", Some(Type.Int), Expr.Var("x", None, testPosition), Expr.Var("x", None, testPosition)),
+      Map.empty
     ) shouldBe
       Right(Func[Id]("id", Type.Int, Expr.Var("x", Type.Int, testPosition), Expr.Var("x", Type.Int, testPosition)))
   }

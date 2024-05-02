@@ -47,7 +47,7 @@ object parser:
       (begin, x) <-
         Parser.product01(
           Parser.caret,
-          (alpha ~ (alpha | digit | Parser.charIn("!@#$%^&*\'\";")).rep0).map { case (a, b) => (a :: b).mkString }
+          (alpha ~ (alpha | digit | Parser.charIn("!@#$%^&\'\";")).rep0).map { case (a, b) => (a :: b).mkString }
         )
       end        <- Parser.caret
     } yield Expr.Var(x, None, Position(begin, end))
@@ -59,8 +59,6 @@ object parser:
         end          <- Parser.caret
       } yield res.updatePosition (begin, end)
 
-    val simpleTermParser = varParser | bracketExprParser | literalParser
-
     val lambdaParser =
       for {
         begin <- Parser.product01(Parser.caret, Parser.string("|") <* exprSpace).map(_._1)
@@ -69,6 +67,8 @@ object parser:
         expr  <- parser
         end   <- Parser.caret
       } yield Expr.Lam(arg, expr, None, Position(begin, end))
+
+    val simpleTermParser = varParser | bracketExprParser | literalParser | lambdaParser
 
     val simpleOrApplyParser =
       for {
@@ -112,3 +112,7 @@ object parser:
       _      <- Parser.string(":=") <* funcSpace
       body   <- exprParser
     } yield Func(name.name, `type`, body, args.map { case (v, t) => v.copy(`type` = t) }*)
+
+
+  def parseFile(file: String): Option[List[Func[Option]]] =
+    parser.funcParser.rep0.parseAll(file).toOption
