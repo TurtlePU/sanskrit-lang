@@ -1,16 +1,24 @@
 package ru.sanskrit.frontend
 
-import cats.parse.Parser
-import cats.parse.Rfc5234.{sp, alpha, digit}
+import cats.parse.{Parser, Parser0}
+import cats.parse.Rfc5234.{sp, alpha, digit, lf, vchar, wsp}
 import ru.sanskrit.common.Type
 import ru.sanskrit.frontend.syntax.{Expr, Func, Position}
 
 object parser:
+  extension [A](a: Parser0[A])
+    def !>[B](b: Parser[B]): Parser[B] = Parser.product01(a, b).map(_._2)
+
+  private val comment: Parser[Unit] = (Parser.char('#') *> (vchar | wsp).rep0 <* lf).void
+  private def space(basicSpace: Parser[Unit]): Parser0[Unit]  = (basicSpace.rep0 *> comment.? <* basicSpace.rep0).void
+  private val exprSpace: Parser0[Unit] = space(wsp)
+  private val funcSpace: Parser0[Unit] = space(wsp | lf)
+
   private def bracketParser[A](parser: Parser[A]): Parser[A] =
     for {
-      _   <- Parser.string("(")
-      res <- sp.rep0 *> parser <* sp.rep0
-      _   <- Parser.string(")")
+      _   <- Parser.char('(')
+      res <- exprSpace *> parser <* exprSpace
+      _   <- Parser.char(')')
     } yield res
 
   private val typeParser = Parser.recursive[Type] { parser =>
@@ -18,20 +26,29 @@ object parser:
     val simpleTypeParser = intTypeParser | bracketParser(parser)
 
     for {
-      a     <- simpleTypeParser <* sp.rep0
-      b     <- (Parser.string("->") *> sp.rep0 *> simpleTypeParser).rep0
+      a     <- simpleTypeParser <* exprSpace
+      b     <- (Parser.string("->") *> exprSpace *> simpleTypeParser).rep0
     } yield b.foldLeft(a)((acc, x) => Type.Func(acc, x))
   }
 
   private val literalParser: Parser[Expr.Lit[Option]] =
     for {
-      (begin, lit) <- Parser.product01(Parser.caret, digit.rep.map(_.foldLeft(0)((acc, a) => 10 * acc + (a - '0'))))
+      (begin, lit) <-
+        Parser.product01(
+          Parser.caret,
+          Parser.product01(Parser.char('-').?, digit.rep.map(_.foldLeft(0)((acc, a) => 10 * acc + (a - '0'))))
+            .map((a, b) => a.fold(b)(_ => -b))
+        )
       end          <- Parser.caret
     } yield Expr.Lit(lit, Position(begin, end))
 
   private val varParser: Parser[Expr.Var[Option]] =
     for {
-      (begin, x) <- Parser.product01(Parser.caret, alpha.rep.map(_.toList.mkString))
+      (begin, x) <-
+        Parser.product01(
+          Parser.caret,
+          (alpha ~ (alpha | digit | Parser.charIn("!@#$%^&\'\";")).rep0).map { case (a, b) => (a :: b).mkString }
+        )
       end        <- Parser.caret
     } yield Expr.Var(x, None, Position(begin, end))
 
@@ -40,58 +57,62 @@ object parser:
       for {
         (begin, res) <- Parser.product01(Parser.caret, bracketParser(parser))
         end          <- Parser.caret
-      } yield res.updatePosition(begin, end)
-
-    val simpleTermParser = varParser | bracketExprParser
+      } yield res.updatePosition (begin, end)
 
     val lambdaParser =
       for {
-        begin <- Parser.product01(Parser.caret, Parser.string("|") <* sp.rep0).map(_._1)
-        arg   <- varParser <* sp.rep0
-        _     <- Parser.string("=>") <* sp.rep0
+        begin <- Parser.product01(Parser.caret, Parser.string("|") <* exprSpace).map(_._1)
+        arg   <- varParser <* exprSpace
+        _     <- Parser.string("=>") <* exprSpace
         expr  <- parser
         end   <- Parser.caret
       } yield Expr.Lam(arg, expr, None, Position(begin, end))
 
+    val simpleTermParser = varParser | bracketExprParser | literalParser | lambdaParser
+
     val simpleOrApplyParser =
       for {
-        f <- simpleTermParser <* sp.rep0
-        x <- (simpleTermParser <* sp.rep0).rep0
+        f <- simpleTermParser <* exprSpace
+        x <- (simpleTermParser <* exprSpace).rep0
       } yield x.foldLeft(f: Expr[Option])((acc, x) =>
         Expr.App(acc, x, None, Position(acc.getPosition.begin, x.getPosition.end))
       )
 
     val mulParser =
       for {
-        x  <- simpleOrApplyParser <* sp.rep0
+        x  <- simpleOrApplyParser <* exprSpace
         ys <-
           (Parser.product01(Parser.caret, Parser.string("*") *> Parser.caret).map(Position.apply) ~
-            (sp.rep0 *> simpleOrApplyParser)).rep0
+            (exprSpace *> simpleOrApplyParser)).rep0
       } yield ys.foldLeft(x) { case (acc, (p, x) ) =>
         Expr.InfixOp(Expr.Var("*", None, p), acc, x, None, Position(acc.getPosition.begin, x.getPosition.end))
       }
 
     val sumParser =
       for {
-        x  <- mulParser <* sp.rep0
+        x  <- mulParser <* exprSpace
         ys <-
           (Parser.product01(Parser.caret, Parser.string("+") *> Parser.caret).map(Position.apply) ~
-            (sp.rep0 *> mulParser)).rep0
+            (exprSpace *> mulParser)).rep0
       } yield ys.foldLeft(x) { case (acc, (p, x)) =>
         Expr.InfixOp(Expr.Var("+", None, p), acc, x, None, Position(acc.getPosition.begin, x.getPosition.end))
       }
 
-    lambdaParser | sumParser | literalParser
+    exprSpace !> (lambdaParser | sumParser)
   }
 
   val funcParser =
     for {
-      name <- varParser <* sp.rep0
+      name <- funcSpace !> varParser <* funcSpace
       args <- (
-        (Parser.string("(") *> sp.rep0 *> varParser <* sp.rep0) ~
-          (Parser.string(":") *> sp.rep0 *> typeParser.? <* sp.rep0 <* Parser.string(")") <* sp.rep0)
+        (Parser.string("(") *> funcSpace *> varParser <* funcSpace) ~
+          (Parser.string(":") *> funcSpace *> typeParser.? <* funcSpace <* Parser.string(")") <* funcSpace)
       ).rep0
-      `type` <- (Parser.string(":") *> sp.rep0 *> typeParser <* sp.rep0).backtrack.?
-      _      <- Parser.string(":=") <* sp.rep0
+      `type` <- (Parser.string(":") *> funcSpace *> typeParser <* funcSpace).backtrack.?
+      _      <- Parser.string(":=") <* funcSpace
       body   <- exprParser
     } yield Func(name.name, `type`, body, args.map { case (v, t) => v.copy(`type` = t) }*)
+
+
+  def parseFile(file: String): Option[List[Func[Option]]] =
+    parser.funcParser.rep0.parseAll(file).toOption

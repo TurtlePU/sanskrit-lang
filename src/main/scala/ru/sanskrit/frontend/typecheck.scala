@@ -46,11 +46,11 @@ object typecheck:
       Left(TypeCheckError(s"Cannot update ($e)'s type to ${`type`}", e.getPosition))
   }
 
-  def inferFuncType(f: Func[Option]): Either[TypeCheckError, Func[Id]] = {
-    val ctx = f.args.flatMap(v => v.`type`.map(t => v.name -> t)).toMap
+  def inferFuncType(f: Func[Option], ctx: Map[String, Type]): Either[TypeCheckError, Func[Id]] = {
+    val ctxArgs = f.args.flatMap(v => v.`type`.map(t => v.name -> t)).toMap
     for {
       updatedBody <- f.tp.fold(Right(f.body))(t => updateType(f.body, t))
-      typedBody   <- inferType(updatedBody, ctx)
+      typedBody   <- inferType(updatedBody, ctx ++ ctxArgs)
       typedArgs   <- f.args.traverse(arg => getType(typedBody, arg.name).flatMap(t => updateVarToId(arg, t)))
     } yield Func(f.name, typedBody.getType, typedBody, typedArgs*)
   }
@@ -67,4 +67,15 @@ object typecheck:
     case Expr.Lam(x, b, _, _) if x.name != name => getType(b, name)
     case _                                      =>
       Left(TypeCheckError(s"Cannon find type of the variable $name", e.getPosition))
+  }
+
+  def typecheckAndLink(functions: List[Func[Option]]): Either[TypeCheckError, List[Func[Id]]] = {
+    val zero: Either[TypeCheckError, (List[Func[Id]], Map[String, Type])] = Right((List.empty, Map.empty))
+    functions.foldLeft(zero)((acc, func) => acc.flatMap((res, acc) =>
+      val funcType = typecheck.inferFuncType(func, acc)
+      funcType.map(typed =>
+        val resultType = typed.args.foldRight(typed.tp)((x, acc) => Type.Func(x.getType, acc))
+        (res :+ typed, acc + (typed.name -> resultType))
+      )
+    )).map(_._1)
   }
