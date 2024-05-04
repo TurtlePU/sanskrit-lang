@@ -26,7 +26,7 @@ object Main {
     val runMode = args(0)
     val files = args.tail.map(readFile).toList
 
-    val desugared = (for {
+    (for {
       parsed      <- files.traverse(file => parser.parseFile(file)).toRight("Parsing error")
       typechecked <- parsed.traverse(typecheck.typecheckAndLink).left.map(createTypeCheckError)
       desugared <- typechecked.traverse(file => desugar.desugarProgram(file)).toRight("Desugaring error")

@@ -69,8 +69,8 @@ object translator {
             val value = exprToC(v, closures, env, definitions, absType=Some(t))
             env += (x -> (t, value))
             val bodyCode = b match {
-                case v: Var => s"printf(\"%d\\n\", ${exprToC(b, closures, env, definitions, absType=Some(t))});"
-                case _ => exprToC(b, closures, env, definitions, absType=Some(t))
+                case v: Var => s"printf(\"%d\\n\", ${exprToC(b, closures, env, definitions, absType=Some(t), cEnv)});"
+                case _ => exprToC(b, closures, env, definitions, absType=Some(t), cEnv)
             }
             s"""${typeToC(t, closures)} ${cleanName(x)} = $value;
             |$bodyCode""".stripMargin
