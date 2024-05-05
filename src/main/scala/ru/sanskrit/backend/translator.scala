@@ -56,15 +56,19 @@ object translator {
         cEnv: String = ""
     ): String = e match {
         case Lit(x) => x.toString
+
         case Var(x) => cEnv + cleanName(x)
+
         case Sum(a, b) =>
             val aCode = exprToC(a, closures, env, definitions, absType, cEnv)
             val bCode = exprToC(b, closures, env, definitions, absType, cEnv)
             s"$aCode + $bCode"
+
         case Mul(a, b) =>
             val aCode = exprToC(a, closures, env, definitions, absType, cEnv)
             val bCode = exprToC(b, closures, env, definitions, absType, cEnv)
             s"$aCode * $bCode"
+
         case Let(x, t, v, b) =>
             val value = exprToC(v, closures, env, definitions, absType=Some(t))
             env += (x -> (t, value))
@@ -74,6 +78,7 @@ object translator {
             }
             s"""${typeToC(t, closures)} ${cleanName(x)} = $value;
             |$bodyCode""".stripMargin
+
         case Abs(x, body) =>
           val funcType = absType.get.asInstanceOf[Type.Func]
           val closureType = typeToC(funcType, closures)
@@ -96,6 +101,7 @@ object translator {
           |return ($closureType){.impl=$implName, .env=env};
           |}""".stripMargin)
           s"create_$implName()"
+
         case App(f, x) =>
           val closureType = typeToC(env(f.x)._1, closures)
           s"(${cleanName(f.x)}.impl(${cleanName(x.x)}, ${cleanName(f.x)}.env))"
