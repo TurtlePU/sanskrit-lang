@@ -9,6 +9,11 @@ object parser:
   extension [A](a: Parser0[A])
     def !>[B](b: Parser[B]): Parser[B] = Parser.product01(a, b).map(_._2)
 
+  extension [A](a: Parser[A])
+    def !? : Parser0[Option[A]]  = a.map(Some.apply).backtrack.orElse(Parser.pure(None))
+    def repAll: Parser0[List[A]] =
+      a.!?.flatMap(_.fold(Parser.unit.as(List.empty))(res1 => a.repAll.map(res2 => res1 :: res2)))
+
   private val comment: Parser[Unit] = (Parser.char('#') *> (vchar | wsp).rep0 <* lf).void
   private def space(basicSpace: Parser[Unit]): Parser0[Unit]  = (basicSpace.rep0 *> comment.? <* basicSpace.rep0).void
   private val exprSpace: Parser0[Unit] = space(wsp)
@@ -115,4 +120,4 @@ object parser:
 
 
   def parseFile(file: String): Option[List[Func[Option]]] =
-    parser.funcParser.rep0.parseAll(file).toOption
+    (funcParser.repAll <* funcSpace).parseAll(file).toOption
