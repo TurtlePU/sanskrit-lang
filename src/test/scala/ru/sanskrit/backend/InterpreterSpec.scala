@@ -64,3 +64,39 @@ class InterpreterSpec extends AnyFlatSpec with Matchers:
     )
     interpreter.run(expr) shouldBe Some(Lit(81))
   }
+
+  it should "interpret function with function argument" in {
+    val expr = Let(
+        Name("dup"),
+        Type.Func(Type.Func(Type.Int, Type.Int), Type.Func(Type.Int, Type.Int)),
+        Abs(Name("f"), Abs(Name("x"), Let(
+            Name("fRes"),
+            Type.Int,
+            App(Var(Name("f")), Var(Name("x"))),
+            App(Var(Name("f")), Var(Name("fRes")))
+        ))),
+        Let(
+            Name("f"),
+            Type.Func(Type.Int, Type.Int),
+            Abs(Name("x"), Mul(Var(Name("x")), Var(Name("x")))),
+            Let(
+                Name("fDup"),
+                Type.Func(Type.Int, Type.Int),
+                App(Var(Name("dup")), Var(Name("f"))),
+                Let(
+                    Name("x"),
+                    Type.Int,
+                    Lit(5),
+                    Let(
+                        Name("main"),
+                        Type.Int,
+                        App(Var(Name("fDup")), Var(Name("x"))),
+                        Var(Name("main"))
+                    )
+                )
+            )
+        )
+    )
+
+    interpreter.run(expr) shouldBe Some(Lit(625))
+  }
