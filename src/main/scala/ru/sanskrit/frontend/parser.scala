@@ -7,7 +7,9 @@ import ru.sanskrit.frontend.syntax.{Expr, Func, Position}
 
 object parser:
   extension [A](a: Parser0[A])
-    def !>[B](b: Parser[B]): Parser[B] = Parser.product01(a, b).map(_._2)
+    def !*[B](b: Parser[B]): Parser[(A, B)] = Parser.product01(a, b)
+    def !<[B](b: Parser[B]): Parser[A]      = (a !* b).map(_._1)
+    def !>[B](b: Parser[B]): Parser[B]      = (a !* b).map(_._2)
 
   private val comment: Parser[Unit] = (Parser.char('#') *> (vchar | wsp).rep0 <* lf).void
   private def space(basicSpace: Parser[Unit]): Parser0[Unit]  = (basicSpace.rep0 *> comment.? <* basicSpace.rep0).void
@@ -33,35 +35,29 @@ object parser:
 
   private val literalParser: Parser[Expr.Lit[Option]] =
     for {
-      (begin, lit) <-
-        Parser.product01(
-          Parser.caret,
-          Parser.product01(Parser.char('-').?, digit.rep.map(_.foldLeft(0)((acc, a) => 10 * acc + (a - '0'))))
-            .map((a, b) => a.fold(b)(_ => -b))
-        )
+      (begin, lit) <- Parser.caret !*
+        (Parser.char('-').? !*
+          digit.rep.map(_.foldLeft(0)((acc, a) => 10 * acc + (a - '0')))).map((a, b) => a.fold(b)(_ => -b))
       end          <- Parser.caret
     } yield Expr.Lit(lit, Position(begin, end))
 
   private val varParser: Parser[Expr.Var[Option]] =
     for {
-      (begin, x) <-
-        Parser.product01(
-          Parser.caret,
-          (alpha ~ (alpha | digit | Parser.charIn("!@#$%^&\'\";")).rep0).map { case (a, b) => (a :: b).mkString }
-        )
+      (begin, x) <- Parser.caret !*
+        (alpha ~ (alpha | digit | Parser.charIn("!@#$%^&\'\";")).rep0).map { case (a, b) => (a :: b).mkString }
       end        <- Parser.caret
     } yield Expr.Var(x, None, Position(begin, end))
 
   val exprParser = Parser.recursive[Expr[Option]] { parser =>
     val bracketExprParser =
       for {
-        (begin, res) <- Parser.product01(Parser.caret, bracketParser(parser))
+        (begin, res) <- Parser.caret !* bracketParser(parser)
         end          <- Parser.caret
       } yield res.updatePosition (begin, end)
 
     val lambdaParser =
       for {
-        begin <- Parser.product01(Parser.caret, Parser.string("|") <* exprSpace).map(_._1)
+        begin <- (Parser.caret !< Parser.string("|") <* exprSpace)
         arg   <- varParser <* exprSpace
         _     <- Parser.string("=>") <* exprSpace
         expr  <- parser
@@ -82,7 +78,7 @@ object parser:
       for {
         x  <- simpleOrApplyParser <* exprSpace
         ys <-
-          (Parser.product01(Parser.caret, Parser.string("*") *> Parser.caret).map(Position.apply) ~
+          ((Parser.caret !* Parser.string("*") *> Parser.caret).map(Position.apply) ~
             (exprSpace *> simpleOrApplyParser)).rep0
       } yield ys.foldLeft(x) { case (acc, (p, x) ) =>
         Expr.InfixOp(Expr.Var("*", None, p), acc, x, None, Position(acc.getPosition.begin, x.getPosition.end))
@@ -92,7 +88,7 @@ object parser:
       for {
         x  <- mulParser <* exprSpace
         ys <-
-          (Parser.product01(Parser.caret, Parser.string("+") *> Parser.caret).map(Position.apply) ~
+          ((Parser.caret !* Parser.string("+") *> Parser.caret).map(Position.apply) ~
             (exprSpace *> mulParser)).rep0
       } yield ys.foldLeft(x) { case (acc, (p, x)) =>
         Expr.InfixOp(Expr.Var("+", None, p), acc, x, None, Position(acc.getPosition.begin, x.getPosition.end))
