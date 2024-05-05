@@ -48,6 +48,12 @@ object parser:
       end        <- Parser.caret
     } yield Expr.Var(x, None, Position(begin, end))
 
+  private val holeParser: Parser[Expr.Hole[Option]] =
+    for {
+      begin <- Parser.caret !< Parser.char('_')
+      end   <- Parser.caret
+    } yield Expr.Hole(None, Position(begin, end))
+
   val exprParser = Parser.recursive[Expr[Option]] { parser =>
     val bracketExprParser =
       for {
@@ -64,7 +70,7 @@ object parser:
         end   <- Parser.caret
       } yield Expr.Lam(arg, expr, None, Position(begin, end))
 
-    val simpleTermParser = varParser | bracketExprParser | literalParser | lambdaParser
+    val simpleTermParser = varParser | bracketExprParser | literalParser | lambdaParser | holeParser
 
     val simpleOrApplyParser =
       for {

@@ -58,4 +58,5 @@ object desugar:
           case _   => None
         }
       } yield (res, lets)
+    case FExpr.Hole(_, _) => None
   }
