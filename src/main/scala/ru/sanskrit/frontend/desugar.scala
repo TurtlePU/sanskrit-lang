@@ -15,9 +15,16 @@ object desugar:
           for {
             acc         <- accF
             (rhs, lets) <- desugarExpr(f.body)
-          } yield lets.foldRight(Let(Name(f.name), f.tp, rhs, acc)) { case ((n, t, r), acc) =>
-            Let(n, t, r, acc)
-          }
+          } yield lets.foldRight(
+              Let(
+                Name(f.name),
+                f.args.map(_.getType).foldRight(f.tp)(Type.Func.apply),
+                f.args.map(_.name).map(Name.apply).foldRight(rhs)(Abs.apply),
+                acc
+              )
+            ) { case ((n, t, r), acc) =>
+              Let(n, t, r, acc)
+            }
         )
     } yield res
 
