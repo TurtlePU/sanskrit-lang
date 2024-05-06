@@ -40,4 +40,44 @@ class TranslatorSpec extends AnyFlatSpec with Matchers {
 
     translator.run(expr) shouldBe Some(expectedTranslation)
   }
+
+  it should "translate function with function argument" in {
+    val expr = Let(
+        Name("dup"),
+        Type.Func(Type.Func(Type.Int, Type.Int), Type.Func(Type.Int, Type.Int)),
+        Abs(Name("f"), Abs(Name("x"), Let(
+            Name("fRes"),
+            Type.Int,
+            App(Var(Name("f")), Var(Name("x"))),
+            App(Var(Name("f")), Var(Name("fRes")))
+        ))),
+        Let(
+            Name("f"),
+            Type.Func(Type.Int, Type.Int),
+            Abs(Name("x"), Mul(Var(Name("x")), Var(Name("x")))),
+            Let(
+                Name("fDup"),
+                Type.Func(Type.Int, Type.Int),
+                App(Var(Name("dup")), Var(Name("f"))),
+                Let(
+                    Name("x"),
+                    Type.Int,
+                    Lit(5),
+                    Let(
+                        Name("main"),
+                        Type.Int,
+                        App(Var(Name("fDup")), Var(Name("x"))),
+                        Var(Name("main"))
+                    )
+                )
+            )
+        )
+    )
+
+    val translationFile = scala.io.Source.fromResource("translator_dup.c")
+    val expectedTranslation = translationFile.mkString
+    translationFile.close()
+
+    translator.run(expr) shouldBe Some(expectedTranslation)
+  }
 }

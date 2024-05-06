@@ -18,8 +18,10 @@ object Main {
     s"Typing error: ${e.cause} at [${e.position.begin.line}:${e.position.begin.col}, ${e.position.end.line}:${e.position.end.col}]"
 
   private def runBackend(expr: Expr, mode: String): Either[String, String | Val] =
-    if mode == "translate" then translator.run(expr).toRight("Translation error")
-    else if mode == "interpret" then interpreter.run(expr).toRight("Interpreting error")
+    if mode == "translate" then
+      translator.run(expr).toRight("Translation error")
+    else if mode == "interpret" then
+      interpreter.run(expr).toRight("Interpreting error")
     else Left("Unknown run mode")
 
   def main(args: Array[String]): Unit = {
