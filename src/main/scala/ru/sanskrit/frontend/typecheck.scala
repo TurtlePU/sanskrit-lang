@@ -22,8 +22,13 @@ object typecheck:
         case _               => Left(TypeCheckError("Application can be used only with functions", p))
       }
     }
-    case Expr.Lam(Expr.Var(x, _, _), b, t, p) => t.toRight(TypeCheckError("Function must have a type", p)).flatMap {
-      case Type.Func(tx, tb) => updateType(b, tb).flatMap(b1 => inferType(b1, ctx + (x -> tx)))
+    case Expr.Lam(v@Expr.Var(x, _, _), b, t, p) => t.toRight(TypeCheckError("Function must have a type", p)).flatMap {
+      case ta@Type.Func(tx, tb) =>
+        for {
+          b1 <- updateType(b, tb)
+          v1 <- updateVarToId(v, tx)
+          b2 <- inferType(b1, ctx + (x -> tx))
+        } yield Expr.Lam(v1, b2, ta, p)
       case _                 => Left(TypeCheckError("Lambda's type is not a function", p))
     }
     case Expr.InfixOp(Expr.Var(f, _, p1), x, y, t, p2) => f match {
