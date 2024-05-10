@@ -1,10 +1,14 @@
+#include "memo_cache.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+DEFINE_MEMO_CACHE(int)
+
 typedef struct {
    int (*impl)(int, void*);
    void* env;
+   MEMO_CACHE(int)* memo;
 } int_int_closure;
 
 typedef struct {
@@ -22,14 +26,15 @@ env_1763225131* env = malloc(sizeof(env_1763225131));
 if (prevEnv != NULL) {
 memcpy(env, prevEnv, prevEnvSize);
 }
-return (int_int_closure){.impl=func_1763225131, .env=env};
+return (int_int_closure){.impl=func_1763225131, .env=env, .memo=create_memo_cache_int()};
 }
 
 int main() {
 int_int_closure f = create_func_1763225131(NULL, 0);
 int x = 5;
-int main = (f.impl(x, f.env));
+int main = memoize_int(f.memo, f.impl, x, f.env);
 printf("%d\n", main);
 free(f.env);
+memo_cache_free_int(f.memo);
 return 0;
 }
