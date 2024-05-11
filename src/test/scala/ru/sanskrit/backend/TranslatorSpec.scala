@@ -5,67 +5,43 @@ import ru.sanskrit.common.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class InterpreterSpec extends AnyFlatSpec with Matchers:
-  "Interpreter" should "interpret literal as itself" in {
-    interpreter.run(Lit(10)) shouldBe Some(Lit(10))
+class TranslatorSpec extends AnyFlatSpec with Matchers {
+  "Translator" should "translate literal main as printf" in {
+    val expr = Let(Name("main"), Type.Int, Lit(5), Var(Name("main")))
+
+    val translationFile = scala.io.Source.fromResource("translator_literal_main.c")
+    val expectedTranslation = translationFile.mkString
+    translationFile.close()
+
+    translator.run(expr) shouldBe Some(expectedTranslation)
   }
 
-  it should "interpret sum" in {
+  it should "translate simple function call with closures" in {
     val expr = Let(
-      Name("a"),
-      Type.Int,
-      Lit(2),
-      Let(
-        Name("b"),
-        Type.Int,
-        Lit(3),
-        Let(
-          Name("res"),
-          Type.Int,
-          Sum(Var(Name("a")), Var(Name("b"))),
-          Var(Name("res"))
-        )
-      )
-    )
-    interpreter.run(expr) shouldBe Some(Lit(5))
-  }
-
-  it should "interpret mul" in {
-    val expr = Let(
-      Name("a"),
-      Type.Int,
-      Lit(2),
-      Let(
-        Name("b"),
-        Type.Int,
-        Lit(3),
-        Let(
-          Name("res"),
-          Type.Int,
-          Mul(Var(Name("a")), Var(Name("b"))),
-          Var(Name("res"))
-        )
-      )
-    )
-    interpreter.run(expr) shouldBe Some(Lit(6))
-  }
-
-  it should "interpret function" in {
-    val expr = Let(
-      Name("square"),
+      Name("f"),
       Type.Func(Type.Int, Type.Int),
       Abs(Name("x"), Mul(Var(Name("x")), Var(Name("x")))),
       Let(
-        Name("y"),
+        Name("x"),
         Type.Int,
-        Lit(9),
-        App(Var(Name("square")), Var(Name("y")))
+        Lit(5),
+        Let(
+          Name("main"),
+          Type.Int,
+          App(Var(Name("f")), Var(Name("x"))),
+          Var(Name("main")) 
+        )
       )
     )
-    interpreter.run(expr) shouldBe Some(Lit(81))
+
+    val translationFile = scala.io.Source.fromResource("translator_function_call.c")
+    val expectedTranslation = translationFile.mkString
+    translationFile.close()
+
+    translator.run(expr) shouldBe Some(expectedTranslation)
   }
 
-  it should "interpret function with function argument" in {
+  it should "translate function with function argument" in {
     val expr = Let(
         Name("dup"),
         Type.Func(Type.Func(Type.Int, Type.Int), Type.Func(Type.Int, Type.Int)),
@@ -98,5 +74,10 @@ class InterpreterSpec extends AnyFlatSpec with Matchers:
         )
     )
 
-    interpreter.run(expr) shouldBe Some(Lit(625))
+    val translationFile = scala.io.Source.fromResource("translator_dup.c")
+    val expectedTranslation = translationFile.mkString
+    translationFile.close()
+
+    translator.run(expr) shouldBe Some(expectedTranslation)
   }
+}
