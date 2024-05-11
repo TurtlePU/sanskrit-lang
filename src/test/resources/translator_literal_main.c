@@ -1,3 +1,4 @@
+#include "memo_cache.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

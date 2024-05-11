@@ -18,18 +18,31 @@ object translator {
     private def cleanName(n: Name) =
         n.name.replace('$', '_').replace('-', '_')
 
-    private def typeToC(t: Type, builder: CBuilder): String = t match {
+    private def isMemoizableArg(t: Type): Boolean = t == Type.Int
+
+    private def typeToC(t: Type, builder: Option[CBuilder] = None): String = t match {
         case Type.Int => "int"
         case Type.Func(a, b) =>
             val argType = typeToC(a, builder)
             val returnType = typeToC(b, builder)
             val closureName = s"${argType}_${returnType}_closure"
-            val declaration = s"""typedef struct {
-            |   $returnType (*impl)($argType, void*);
-            |   void* env;
-            |} $closureName;""".stripMargin
 
-            builder.addDefinition(closureName, declaration)
+            val declaration = if isMemoizableArg(a) then
+                s"""typedef struct {
+                |   $returnType (*impl)($argType, void*);
+                |   void* env;
+                |   MEMO_CACHE($returnType)* memo;
+                |} $closureName;""".stripMargin
+            else
+                s"""typedef struct {
+                |   $returnType (*impl)($argType, void*);
+                |   void* env;
+                |} $closureName;""".stripMargin
+            
+            if builder != None then
+                if isMemoizableArg(a) then
+                    builder.get.addDefinition(s"MEMO_CACHE($returnType)", s"DEFINE_MEMO_CACHE($returnType)")
+                builder.get.addDefinition(closureName, declaration)
 
             closureName
     }
@@ -59,7 +72,7 @@ object translator {
 
         case Let(x, t, v, b) =>
             val value = exprToC(v, env, builder, Some(t), cEnv, prevEnvPtr, prevEnv)
-            val definition = s"${typeToC(t, builder)} ${cleanName(x)};"
+            val definition = s"${typeToC(t, Some(builder))} ${cleanName(x)};"
             env += (x -> (t, value))
             val bodyCodeRaw = exprToC(b, env, builder, Some(t), cEnv, prevEnvPtr, prevEnv :+ definition)
             val bodyCode = b match {
@@ -67,14 +80,14 @@ object translator {
                 case _ if x.name == "main" => s"printf(\"%d\\n\", $bodyCodeRaw);"
                 case _ => s"return $bodyCodeRaw;"
             }
-            s"""${typeToC(t, builder)} ${cleanName(x)} = $value;
+            s"""${typeToC(t, Some(builder))} ${cleanName(x)} = $value;
             |$bodyCode""".stripMargin
 
         case Abs(x, body) =>
           val funcType = absType.get.asInstanceOf[Type.Func]
-          val closureType = typeToC(funcType, builder)
-          val argType = typeToC(funcType.a, builder)
-          val returnType = typeToC(funcType.b, builder)
+          val closureType = typeToC(funcType, Some(builder))
+          val argType = typeToC(funcType.a, Some(builder))
+          val returnType = typeToC(funcType.b, Some(builder))
 
           val newCEnv = prevEnv :+ s"$argType ${x.name};"
           val newEnv = env + (x -> (funcType.a, ""))
@@ -87,6 +100,11 @@ object translator {
 
           val implName = s"func_${bodyCode.hashCode.abs}"
           val envName = s"env_${bodyCode.hashCode.abs}"
+          val memo = if isMemoizableArg(funcType.a) then s"create_memo_cache_$returnType()" else "NULL"
+          val ret = if isMemoizableArg(funcType.a) then
+            s"($closureType){.impl=$implName, .env=env, .memo=create_memo_cache_$returnType()}"
+          else
+            s"($closureType){.impl=$implName, .env=env}"
 
           val definition = s"""${envStructToC(newCEnv, envName)}
           |
@@ -101,7 +119,7 @@ object translator {
           |if (prevEnv != NULL) {
           |memcpy(env, prevEnv, prevEnvSize);
           |}
-          |return ($closureType){.impl=$implName, .env=env};
+          |return $ret;
           |}""".stripMargin
 
           builder.addDefinition(implName, definition)
@@ -112,8 +130,12 @@ object translator {
             s"create_$implName($prevEnvPtr, sizeof(*$prevEnvPtr))"
 
         case App(f, x) =>
-          val closureType = typeToC(env(f.x)._1, builder)
-          s"($cEnv${cleanName(f.x)}.impl(${cleanName(x.x)}, $cEnv${cleanName(f.x)}.env))"
+          val closureType = typeToC(env(f.x)._1, Some(builder))
+          val returnType = typeToC(env(f.x)._1.asInstanceOf[Type.Func].b, Some(builder))
+          if isMemoizableArg(env(f.x)._1.asInstanceOf[Type.Func].a) then
+            s"memoize_$returnType($cEnv${cleanName(f.x)}.memo, $cEnv${cleanName(f.x)}.impl, ${cleanName(x.x)}, $cEnv${cleanName(f.x)}.env)"
+          else
+            s"$cEnv${cleanName(f.x)}.impl(${cleanName(x.x)}, $cEnv${cleanName(f.x)}.env)"
     }
 
     private def envStructToC(env: List[String], envName: String): String =
@@ -129,5 +151,8 @@ object translator {
             case Type.Func(_, _) => true
             case _ => false
         })
-        (for {(name, (t, _)) <- closuresEnv} yield s"free(${cleanName(name)}.env);").mkString("\n")
+        (for {(name, (t, _)) <- closuresEnv} yield if isMemoizableArg(t.asInstanceOf[Type.Func].a) then
+            s"free(${cleanName(name)}.env);\nmemo_cache_free_${typeToC(t.asInstanceOf[Type.Func].b)}(${cleanName(name)}.memo);"
+            else s"free(${cleanName(name)}.env);"
+        ).mkString("\n")
 }
