@@ -15,6 +15,7 @@ object syntax:
     case App(f: Expr[F], x: Expr[F], `type`: F[Type], position: Position)
     case Lam(arg: Var[F], expr: Expr[F], `type`: F[Type], position: Position)
     case InfixOp(f: Var[F], x: Expr[F], y: Expr[F], `type`: F[Type], position: Position)
+    case Hole(`type`: F[Type], position: Position)
 
     def getType(using Applicative[F]): F[Type] = self match {
       case Lit(_, _)              => Type.Int.pure
@@ -22,6 +23,7 @@ object syntax:
       case App(_, _, t, _)        => t
       case Lam(_, _, t, _)        => t
       case InfixOp(_, _, _, t, _) => t
+      case Hole(t, _)             => t
     }
 
     def getPosition: Position = self match {
@@ -30,6 +32,7 @@ object syntax:
       case App(_, _, _, p)        => p
       case Lam(_, _, _, p)        => p
       case InfixOp(_, _, _, _, p) => p
+      case Hole(_, p)             => p
     }
 
     def updatePosition(begin: Caret, end: Caret): Expr[F] = self match {
@@ -38,6 +41,7 @@ object syntax:
       case App(f, x, t, _)        => App(f, x, t, Position(begin, end))
       case Lam(a, e, t, _)        => Lam(a, e, t, Position(begin, end))
       case InfixOp(f, x, y, t, _) => InfixOp(f, x, y, t, Position(begin, end))
+      case Hole(t, _)             => Hole(t, Position(begin, end))
     }
 
   case class Func[F[_]](name: String, tp: F[Type], body: Expr[F], args: Expr.Var[F]*)

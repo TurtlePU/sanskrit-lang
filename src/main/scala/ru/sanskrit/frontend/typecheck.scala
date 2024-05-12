@@ -34,6 +34,8 @@ object typecheck:
         } yield Expr.InfixOp(Expr.Var(f, Type.Func(Type.Int, Type.Func(Type.Int, Type.Int)), p1), x1, y1, Type.Int, p2)
       case _ => Left(TypeCheckError("Infix op can be only + and *", p2))
     }
+    case Expr.Hole(t, p) =>
+      Left(TypeCheckError(t.fold("Cannot infer hole's type")(t => s"Found a hole with the type $t"), p))
   }
 
   private def updateType(e: Expr[Option], `type`: Type): Either[TypeCheckError, Expr[Option]] = e match {
@@ -42,6 +44,7 @@ object typecheck:
     case Expr.App(f, x, t, p) if t.forall(_ == `type`)        => Right(Expr.App(f, x, Some(`type`), p))
     case Expr.Lam(x, b, t, p) if t.forall(_ == `type`)        => Right(Expr.Lam(x, b, Some(`type`), p))
     case Expr.InfixOp(f, x, y, t, p) if t.forall(_ == `type`) => Right(Expr.InfixOp(f, x, y, Some(`type`), p))
+    case Expr.Hole(t, p) if t.forall(_ == `type`)             => Right(Expr.Hole(Some(`type`), p))
     case _                                                    =>
       Left(TypeCheckError(s"Cannot update ($e)'s type to ${`type`}", e.getPosition))
   }
@@ -65,6 +68,7 @@ object typecheck:
     case Expr.Var(n, t, _) if n == name         => Right(t)
     case Expr.App(f, x, _, _)                   => getType(f, name).orElse(getType(x, name))
     case Expr.Lam(x, b, _, _) if x.name != name => getType(b, name)
+    case Expr.InfixOp(f, x, y, _, _)            => getType(f, name).orElse(getType(x, name)).orElse(getType(y, name))
     case _                                      =>
       Left(TypeCheckError(s"Cannon find type of the variable $name", e.getPosition))
   }

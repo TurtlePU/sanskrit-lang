@@ -74,6 +74,24 @@ class TypeCheckSpec extends AnyFlatSpec with Matchers:
     )
   }
 
+  it should "infer hole's type" in {
+    typecheck.inferType(
+      Expr.InfixOp(
+        Expr.Var("+", None, testPosition),
+        Expr.Hole(None, testPosition),
+        Expr.Hole(None, testPosition),
+        None,
+        testPosition
+      ),
+      Map.empty
+    ) shouldBe Left(TypeCheckError("Found a hole with the type Int", testPosition))
+  }
+
+  it should "not infer unknown hole's type" in {
+    typecheck.inferType(Expr.Hole(None, testPosition), Map.empty) shouldBe
+      Left(TypeCheckError("Cannot infer hole's type", testPosition))
+  }
+
   "inferFuncType" should "accept a fully annotated function" in {
     typecheck.inferFuncType(
       Func[Option](
@@ -101,4 +119,35 @@ class TypeCheckSpec extends AnyFlatSpec with Matchers:
       Map.empty
     ) shouldBe
       Right(Func[Id]("id", Type.Int, Expr.Var("x", Type.Int, testPosition), Expr.Var("x", Type.Int, testPosition)))
+  }
+
+  it should "infer arguments' types based on a complex expression" in {
+    typecheck.inferFuncType(
+      Func[Option](
+        "add",
+        Some(Type.Int),
+        Expr.InfixOp(
+          Expr.Var("+", None, testPosition),
+          Expr.Var("x", None, testPosition),
+          Expr.Var("y", None, testPosition),
+          None,
+          testPosition
+        ),
+        Expr.Var("x", None, testPosition),
+        Expr.Var("y", None, testPosition)
+      ),
+      Map.empty
+    ) shouldBe Right(Func[Id](
+      "add",
+      Type.Int,
+      Expr.InfixOp(
+        Expr.Var("+", Type.Func(Type.Int, Type.Func(Type.Int, Type.Int)), testPosition),
+        Expr.Var("x", Type.Int, testPosition),
+        Expr.Var("y", Type.Int, testPosition),
+        Type.Int,
+        testPosition
+      ),
+      Expr.Var("x", Type.Int, testPosition),
+      Expr.Var("y", Type.Int, testPosition)
+    ))
   }

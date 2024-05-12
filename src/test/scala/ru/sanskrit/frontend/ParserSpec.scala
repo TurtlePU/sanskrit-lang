@@ -105,6 +105,17 @@ class ParserSpec extends AnyFlatSpec with Matchers:
       )))
   }
 
+  it should "parse typed holes" in {
+    parser.exprParser.parse("a * _") shouldBe
+      Right("", Expr.InfixOp(
+        Expr.Var("*", None, Position(Caret(0, 2, 2), Caret(0, 3, 3))),
+        Expr.Var("a", None, Position(Caret(0, 0, 0), Caret(0, 1, 1))),
+        Expr.Hole(None, Position(Caret(0, 4, 4), Caret(0, 5, 5))),
+        None,
+        Position(Caret(0, 0, 0), Caret(0, 5, 5))
+      ))
+  }
+
   "Func" should "parse constant let" in {
     parser.funcParser.parse("a: Int := 42") shouldBe
       Right(("", Func("a", Some(Type.Int), Expr.Lit(42, Position(Caret(0, 10, 10), Caret(0, 12, 12))))))
