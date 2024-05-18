@@ -90,20 +90,20 @@ class DesugarSpec extends AnyFlatSpec with Matchers:
         Type.Func(Type.Int, Type.Int),
         Abs(Name("x"), Var(Name("x"))),
         Let(
-          Name("f"),
-          Type.Func(Type.Int, Type.Int),
-          Var(Name("id")),
+          Name("main"),
+          Type.Int,
           Let(
-            Name("a"),
-            Type.Int,
-            Var(Name("x")),
+            Name("f"),
+            Type.Func(Type.Int, Type.Int),
+            Var(Name("id")),
             Let(
-              Name("main"),
+              Name("a"),
               Type.Int,
-              App(Var(Name("f")), Var(Name("a"))),
-              Var(Name("main"))
+              Var(Name("x")),
+              App(Var(Name("f")), Var(Name("a")))
             )
-          )
+          ),
+          Var(Name("main"))
         )
       ))
   }
