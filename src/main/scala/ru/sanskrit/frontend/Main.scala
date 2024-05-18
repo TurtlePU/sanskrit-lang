@@ -30,8 +30,11 @@ object Main {
 
     (for {
       parsed      <- files.traverse(file => parser.parseFile(file)).toRight("Parsing error")
+      _ = println(parsed)
       typechecked <- parsed.traverse(typecheck.typecheckAndLink).left.map(createTypeCheckError)
+      _ = println(typechecked)
       desugared   <- typechecked.traverse(file => desugar.desugarProgram(file)).toRight("Desugaring error")
+      _ = println(desugared)
       result      <- desugared.traverse(expr => runBackend(expr, runMode))
     } yield result).fold(println, res => println(res))
   }

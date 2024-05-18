@@ -20,12 +20,14 @@ object desugar:
           for {
             acc         <- accF
             (rhs, lets) <- desugarExpr(f.body)
-          } yield f.args.map(_.name).map(Name.apply).foldRight(
-            lets.foldRight(
-              Let(Name(f.name), f.args.map(_.getType).foldRight(f.tp)(Type.Func.apply), rhs, acc)
-            )(constructLet)
-          )(Abs.apply)
-        )
+          } yield Let(
+            Name(f.name),
+            f.args.map(_.getType).foldRight(f.tp)(Type.Func.apply),
+            f.args.map(_.name).map(Name.apply).foldRight(
+              lets.foldRight(rhs)(constructLet)
+            )(Abs.apply),
+            acc
+          ))
     } yield res
 
   def desugarExpr(e: FExpr[Id]): Option[(Expr, List[(Name, Type, Expr)])] = e match {

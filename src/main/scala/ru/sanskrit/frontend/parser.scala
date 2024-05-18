@@ -16,10 +16,11 @@ object parser:
     def repAll: Parser0[List[A]] =
       a.!?.flatMap(_.fold(Parser.unit.as(List.empty))(res1 => a.repAll.map(res2 => res1 :: res2)))
 
-  private val comment: Parser[Unit] = (Parser.char('#') *> (vchar | wsp).rep0 <* lf).void
-  private def space(basicSpace: Parser[Unit]): Parser0[Unit]  = (basicSpace.rep0 *> comment.? <* basicSpace.rep0).void
+  private val comment: Parser[Unit] = (Parser.char('#') *> (vchar | wsp).rep0).void
+  private def space(basicSpace: Parser[Unit]): Parser0[Unit] =
+    (basicSpace.rep0 *> (comment <* basicSpace.rep0).repAll <* basicSpace.rep0).void
   private val exprSpace: Parser0[Unit] = space(wsp)
-  private val funcSpace: Parser0[Unit] = space(wsp | lf)
+  private val funcSpace: Parser0[Unit] = space(wsp | lf | Parser.char(13.toChar))
 
   private def bracketParser[A](parser: Parser[A]): Parser[A] =
     for {
@@ -80,7 +81,7 @@ object parser:
     val simpleOrApplyParser =
       for {
         f <- simpleTermParser <* exprSpace
-        x <- (simpleTermParser <* exprSpace).rep0
+        x <- (simpleTermParser <* exprSpace).repAll
       } yield x.foldLeft(f: Expr[Option])((acc, x) =>
         Expr.App(acc, x, None, Position(acc.getPosition.begin, x.getPosition.end))
       )
@@ -105,20 +106,23 @@ object parser:
         Expr.InfixOp(Expr.Var("+", None, p), acc, x, None, Position(acc.getPosition.begin, x.getPosition.end))
       }
 
-    exprSpace !> (lambdaParser | sumParser)
+    exprSpace !> sumParser
   }
+
+  private val argParser =
+    ((Parser.string("(") *> funcSpace *> varParser <* funcSpace) ~
+      (Parser.string(":") *> funcSpace *> typeParser <* funcSpace <* Parser.string(")")))
+      .map { case (v, t) => v.copy(`type` = Some(t))} | varParser
+
 
   val funcParser =
     for {
       name <- funcSpace !> varParser <* funcSpace
-      args <- (
-        (Parser.string("(") *> funcSpace *> varParser <* funcSpace) ~
-          (Parser.string(":") *> funcSpace *> typeParser.? <* funcSpace <* Parser.string(")") <* funcSpace)
-      ).rep0
+      args <- (argParser <* funcSpace).rep0
       `type` <- (Parser.string(":") *> funcSpace *> typeParser <* funcSpace).backtrack.?
       _      <- Parser.string(":=") <* funcSpace
       body   <- exprParser
-    } yield Func(name.name, `type`, body, args.map { case (v, t) => v.copy(`type` = t) }*)
+    } yield Func(name.name, `type`, body, args*)
 
 
   def parseFile(file: String): Option[List[Func[Option]]] =
