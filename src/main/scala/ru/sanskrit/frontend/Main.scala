@@ -7,6 +7,20 @@ import ru.sanskrit.backend.translator
 import ru.sanskrit.common.*
 
 object Main {
+  enum Option:
+    case Debug
+
+  class Options(options: Set[Option]) {
+    def debugEnabled: Boolean = options.contains(Option.Debug)
+  }
+
+  private def parseOptions(args: Array[String]): (Array[String], Options) = {
+    val options = args.filter(_.startsWith("-")).collect {
+      case "-D" | "-d" | "--debug" => Option.Debug
+    }.toSet
+    (args.filterNot(_.startsWith("-")), Options(options))
+  }
+
   private def readFile(fileName: String): String = {
     val source = scala.io.Source.fromFile(fileName)
     val res    = source.getLines.mkString("\n")
@@ -26,15 +40,16 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val runMode = args(0)
-    val files = args.tail.map(readFile).toList
+    val (args1, options) = parseOptions(args.tail)
+    val files = args1.map(readFile).toList
 
     (for {
       parsed      <- files.traverse(file => parser.parseFile(file)).toRight("Parsing error")
-      _ = println(parsed)
+      _ = if (options.debugEnabled) then println(parsed) else ()
       typechecked <- parsed.traverse(typecheck.typecheckAndLink).left.map(createTypeCheckError)
-      _ = println(typechecked)
+      _ = if (options.debugEnabled) then println(typechecked) else ()
       desugared   <- typechecked.traverse(file => desugar.desugarProgram(file)).toRight("Desugaring error")
-      _ = println(desugared)
+      _ = if (options.debugEnabled) then println(desugared) else ()
       result      <- desugared.traverse(expr => runBackend(expr, runMode))
     } yield result).fold(println, res => println(res))
   }
