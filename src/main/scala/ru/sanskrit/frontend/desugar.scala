@@ -7,6 +7,11 @@ import ru.sanskrit.frontend.syntax.{Expr as FExpr, Func}
 import java.util.UUID
 
 object desugar:
+  private def constructLet(let: (Name, Type, Expr), base: Expr): Expr = {
+    val (n, t, r) = let
+    Let(n, t, r, base)
+  }
+
   def desugarProgram(f: List[Func[Id]]): Option[Expr] =
     for {
       _   <- Option.when(f.exists(_.name == "main"))(())
@@ -15,10 +20,14 @@ object desugar:
           for {
             acc         <- accF
             (rhs, lets) <- desugarExpr(f.body)
-          } yield lets.foldRight(Let(Name(f.name), f.tp, rhs, acc)) { case ((n, t, r), acc) =>
-            Let(n, t, r, acc)
-          }
-        )
+          } yield Let(
+            Name(f.name),
+            f.args.map(_.getType).foldRight(f.tp)(Type.Func.apply),
+            f.args.map(_.name).map(Name.apply).foldRight(
+              lets.foldRight(rhs)(constructLet)
+            )(Abs.apply),
+            acc
+          ))
     } yield res
 
   def desugarExpr(e: FExpr[Id]): Option[(Expr, List[(Name, Type, Expr)])] = e match {
@@ -41,7 +50,7 @@ object desugar:
         (aVal, aLets) <- desugarExpr(a)
       } yield {
         val fName = s"f$$${UUID.randomUUID()}"
-        (Abs(Name(x), Let(Name(fName), a.getType, aVal, Var(Name(fName)))), aLets)
+        (Abs(Name(x), Let(Name(fName), a.getType, aLets.foldRight(aVal)(constructLet), Var(Name(fName)))), List.empty)
       }
     case FExpr.InfixOp(FExpr.Var(f, _, _), x, y, _, _) =>
       for {

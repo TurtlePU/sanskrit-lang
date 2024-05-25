@@ -70,3 +70,40 @@ class DesugarSpec extends AnyFlatSpec with Matchers:
   it should "fail on program without main" in {
     desugar.desugarProgram(List.empty) shouldBe None
   }
+
+  it should "desugar function types" in {
+    desugar.desugarProgram(List(
+      Func("id", Type.Int, FExpr.Var("x", Type.Int, testPosition), FExpr.Var("x", Type.Int, testPosition)),
+      Func(
+        "main",
+        Type.Int,
+        FExpr.App(
+          FExpr.Var("id", Type.Func(Type.Int, Type.Int), testPosition),
+          FExpr.Var("x", Type.Int, testPosition),
+          Type.Int,
+          testPosition
+        )
+      )
+    )).map(cutUUID) shouldBe
+      Some(Let(
+        Name("id"),
+        Type.Func(Type.Int, Type.Int),
+        Abs(Name("x"), Var(Name("x"))),
+        Let(
+          Name("main"),
+          Type.Int,
+          Let(
+            Name("f"),
+            Type.Func(Type.Int, Type.Int),
+            Var(Name("id")),
+            Let(
+              Name("a"),
+              Type.Int,
+              Var(Name("x")),
+              App(Var(Name("f")), Var(Name("a")))
+            )
+          ),
+          Var(Name("main"))
+        )
+      ))
+  }
