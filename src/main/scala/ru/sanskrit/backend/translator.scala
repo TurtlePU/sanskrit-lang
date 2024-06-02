@@ -22,6 +22,7 @@ object translator {
 
     private def typeToC(t: Type, builder: Option[CBuilder] = None): String = t match {
         case Type.Int => "int"
+        case Type.IntArray(_) => "int*"
         case Type.Func(a, b) =>
             val argType = typeToC(a, builder)
             val returnType = typeToC(b, builder)
@@ -58,21 +59,30 @@ object translator {
     ): String = e match {
         case Lit(x) => x.toString
 
+        case LitArray(x) => s"{${x.mkString(", ")}}"
+
         case Var(x) => cEnv + cleanName(x)
 
         case Sum(a, b) =>
             val aCode = exprToC(a, env, builder, absType, cEnv, prevEnvPtr, prevEnv)
             val bCode = exprToC(b, env, builder, absType, cEnv, prevEnvPtr, prevEnv)
-            s"$aCode + $bCode"
+            env.get(a.asInstanceOf[Var].x).get._1 match
+                case Type.IntArray(n) => s"vectorized_add($aCode, $bCode, $n)"
+                case _ => s"$aCode + $bCode"
 
         case Mul(a, b) =>
             val aCode = exprToC(a, env, builder, absType, cEnv, prevEnvPtr, prevEnv)
             val bCode = exprToC(b, env, builder, absType, cEnv, prevEnvPtr, prevEnv)
-            s"$aCode * $bCode"
+            val aVar = env.get(a.asInstanceOf[Var].x).get
+            env.get(a.asInstanceOf[Var].x).get._1 match
+                case Type.IntArray(n) => s"vectorized_mul($aCode, $bCode, $n)"
+                case _ => s"$aCode * $bCode"
 
         case Let(x, t, v, b) =>
             val value = exprToC(v, env, builder, Some(t), cEnv, prevEnvPtr, prevEnv)
-            val definition = s"${typeToC(t, Some(builder))} ${cleanName(x)};"
+            val definition = t match
+                case Type.IntArray(n) => s"int ${cleanName(x)}[$n];"
+                case _ => s"${typeToC(t, Some(builder))} ${cleanName(x)};"
             env += (x -> (t, value))
             val bodyCodeRaw = exprToC(b, env, builder, Some(t), cEnv, prevEnvPtr, prevEnv :+ definition)
             val bodyCode = b match {
@@ -80,8 +90,11 @@ object translator {
                 case _ if x.name == "main" => s"printf(\"%d\\n\", $bodyCodeRaw);"
                 case _ => s"return $bodyCodeRaw;"
             }
-            s"""${typeToC(t, Some(builder))} ${cleanName(x)} = $value;
-            |$bodyCode""".stripMargin
+            t match
+                case Type.IntArray(n) => s"""int ${cleanName(x)}[$n] = $value;
+                                            |$bodyCode""".stripMargin
+                case _ => s"""${typeToC(t, Some(builder))} ${cleanName(x)} = $value;
+                             |$bodyCode""".stripMargin
 
         case Abs(x, body) =>
           val funcType = absType.get.asInstanceOf[Type.Func]
