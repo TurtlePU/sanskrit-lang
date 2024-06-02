@@ -3,7 +3,7 @@ package ru.sanskrit.backend
 import scala.collection.mutable.{ListBuffer, Set}
 
 class CBuilder {
-  var includes: String = "#include \"memo_cache.h\"\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>"
+  var includes: String = "#include \"memo_cache.h\"\n#include \"vectorization.h\"\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>"
   var definitions: ListBuffer[String] = ListBuffer.empty
   var mainBody: String = ""
 
