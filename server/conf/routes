@@ -1,0 +1,21 @@
+GET     /                           controllers.HomeController.index()
+
+GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
+
+GET /api/errors controllers.HomeController.runMain()
+
+POST /api/code controllers.HomeController.saveFiles()
+
+GET /api/parsing controllers.HomeController.runParser()
+
+GET /api/typecheck controllers.HomeController.runTypecheck()
+
+GET /api/holes controllers.HomeController.runHoles()
+
+GET /api/desugar controllers.HomeController.runDesugar()
+
+GET /api/backend controllers.HomeController.runBack()
+
+POST /api/compile controllers.HomeController.compile()
+
+GET /api/getFiles controllers.HomeController.getFiles()
